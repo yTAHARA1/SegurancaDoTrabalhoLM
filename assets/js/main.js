@@ -285,7 +285,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     const acesso = document.getElementById('login-acesso').value;
     const senha = document.getElementById('login-senha').value;
 
-    // Admin redirect check (Master fixo)
+    // Admin redirect check (Master fixo)   
     if (acesso.toLowerCase() === 'LMadmin' && (senha === 'senhaLM' || senha === 'lmseguranca')) {
         sessionStorage.setItem('adminAuth', 'true');
         window.location.href = 'admin.html';

@@ -219,6 +219,7 @@
                             <table class="data-table" style="width: 100%; text-align: left; border-collapse: collapse;">
                                 <thead>
                                     <tr style="border-bottom: 2px solid var(--c-gray-200); background-color: var(--c-gray-100);">
+                                        <th style="padding: 1rem;">Código</th>
                                         <th style="padding: 1rem;">Serviço</th>
                                         <th style="padding: 1rem;">Data Preferencial</th>
                                         <th style="padding: 1rem;">Status</th>
@@ -287,7 +288,8 @@
                     <input type="password" id="login-senha" placeholder="Sua senha" required>
                 </div>
                 <button type="submit" class="btn btn-primary w-full" id="btnFazerLogin"><i data-lucide="log-in"></i> Entrar</button>
-                <p style="text-align:center; margin-top: 1rem; color: var(--c-gray-600); cursor: pointer;" onclick="document.getElementById('closeLoginModal').click(); document.getElementById('btnCadastroModal').click();">Não tem acesso? <strong>Cadastre-se</strong></p>
+                <p style="text-align:center; margin-top: 0.8rem; color: var(--c-gray-600); cursor: pointer;" onclick="document.getElementById('closeLoginModal').click(); document.getElementById('btnCadastroModal').click();">Não tem acesso? <strong>Cadastre-se</strong></p>
+                <p id="btnEsqueciSenha" style="text-align:center; margin-top: 0.3rem; color: var(--c-primary); cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">🔑 Esqueci minha senha</p>
             </form>
         </div>
     </div>

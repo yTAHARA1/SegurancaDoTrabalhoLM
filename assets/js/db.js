@@ -265,16 +265,45 @@ const DBService = {
         }
     },
 
+    // === GERAR CÓDIGO ÚNICO DE AGENDAMENTO ===
+    _gerarCodigoAgendamento() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let code = 'LM-';
+        for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+        return code;
+    },
+
     // === GETTERS PADRÕES PARA ADMIN ===
     async salvarAgendamento(agendamentoData) {
         agendamentoData.dataSolicitacao = new Date().toISOString();
         agendamentoData.status = 'Pendente';
+        agendamentoData.codigo = this._gerarCodigoAgendamento();
         if (dbFuncional) {
-            try { const docRef = await db.collection("agendamentos").add(agendamentoData); return { success: true, id: docRef.id }; } catch (e) { return { success: false }; }
+            try {
+                const docRef = await db.collection("agendamentos").add(agendamentoData);
+                return { success: true, id: docRef.id, codigo: agendamentoData.codigo };
+            } catch (e) { return { success: false }; }
         } else {
             const ag = JSON.parse(localStorage.getItem('lm_agendamentos') || '[]');
             const n = { ...agendamentoData, id: 'local_' + Date.now() }; ag.push(n);
-            localStorage.setItem('lm_agendamentos', JSON.stringify(ag)); return { success: true, local: true };
+            localStorage.setItem('lm_agendamentos', JSON.stringify(ag));
+            return { success: true, local: true, codigo: agendamentoData.codigo };
+        }
+    },
+
+    // === BUSCAR AGENDAMENTO POR CÓDIGO ===
+    async getAgendamentoPorCodigo(codigo) {
+        if (dbFuncional) {
+            const snap = await db.collection("agendamentos").where("codigo", "==", codigo.toUpperCase()).get();
+            if (!snap.empty) {
+                const doc = snap.docs[0];
+                return { success: true, agendamento: { id: doc.id, ...doc.data() } };
+            }
+            return { success: false };
+        } else {
+            const ags = JSON.parse(localStorage.getItem('lm_agendamentos') || '[]');
+            const found = ags.find(a => a.codigo === codigo.toUpperCase());
+            return found ? { success: true, agendamento: found } : { success: false };
         }
     },
     async getAgendamentosPorCliente(clienteId) {
@@ -307,6 +336,42 @@ const DBService = {
             let ags = JSON.parse(localStorage.getItem('lm_agendamentos') || '[]');
             ags = ags.map(a => a.id === id ? { ...a, status: novoStatus } : a);
             localStorage.setItem('lm_agendamentos', JSON.stringify(ags));
+        }
+    },
+
+    // === ALTERAR SENHA DO ADMIN ===
+    async alterarSenhaAdmin(id, novaSenha) {
+        if (dbFuncional) {
+            try {
+                await db.collection("admins").doc(id).update({ senha: novaSenha });
+                return { success: true };
+            } catch (error) { return { success: false, error }; }
+        } else {
+            let admins = JSON.parse(localStorage.getItem('lm_admins') || '[]');
+            admins = admins.map(a => a.id === id ? { ...a, senha: novaSenha } : a);
+            localStorage.setItem('lm_admins', JSON.stringify(admins));
+            return { success: true };
+        }
+    },
+
+    // === BUSCAR CLIENTE POR EMAIL OU CNPJ (para recuperação de senha) ===
+    async buscarClientePorAcesso(acesso) {
+        if (dbFuncional) {
+            try {
+                let snap = await db.collection("clientes").where("email", "==", acesso).get();
+                if (snap.empty) {
+                    snap = await db.collection("clientes").where("cnpj", "==", acesso).get();
+                }
+                if (!snap.empty) {
+                    const doc = snap.docs[0];
+                    return { success: true, cliente: { id: doc.id, ...doc.data() } };
+                }
+                return { success: false };
+            } catch (e) { return { success: false }; }
+        } else {
+            const clientes = JSON.parse(localStorage.getItem('lm_clientes') || '[]');
+            const found = clientes.find(c => c.email === acesso || c.cnpj === acesso);
+            return found ? { success: true, cliente: found } : { success: false };
         }
     }
 }; 

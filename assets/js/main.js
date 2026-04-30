@@ -227,8 +227,8 @@ document.getElementById('agendamentoForm')?.addEventListener('submit', async (e)
         clienteNome = user.razaoSocial;
     }
 
-    // 1. Salvar no Banco de Dados
-    await DBService.salvarAgendamento({
+    // 1. Salvar no Banco de Dados (agora retorna o código)
+    const result = await DBService.salvarAgendamento({
         servico: servicoText,
         dataAgendamento: dataFormatada,
         observacoes: obs,
@@ -236,15 +236,21 @@ document.getElementById('agendamentoForm')?.addEventListener('submit', async (e)
         clienteNome: clienteNome || 'Visitante/Não Logado'
     });
     
+    const codigoGerado = result.codigo || '---';
+    
     if (clienteId) renderAreaCliente();
     
     // 2. Enviar para WhatsApp do Diretor
     let mensagem = `Olá! Gostaria de pré-agendar um serviço pela LM Segurança.\n\n`;
+    mensagem += `*Código:* ${codigoGerado}\n`;
     mensagem += `*Serviço:* ${servicoText}\n`;
     mensagem += `*Data Preferencial:* ${dataFormatada}\n`;
     if(obs) {
         mensagem += `*Obs:* ${obs}`;
     }
+
+    // 3. Mostrar o código ao usuário
+    alert(`✅ Agendamento solicitado com sucesso!\n\nSeu código de acompanhamento é:\n\n🔖 ${codigoGerado}\n\nGuarde este código para consultar o status do seu agendamento.`);
 
     const whatsappUrl = `https://wa.me/5518991526770?text=${encodeURIComponent(mensagem)}`;
     window.open(whatsappUrl, '_blank');
@@ -309,6 +315,35 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     btn.innerHTML = originalText;
 });
 
+// === ESQUECI MINHA SENHA ===
+document.getElementById('btnEsqueciSenha')?.addEventListener('click', async () => {
+    const acesso = document.getElementById('login-acesso').value.trim();
+    
+    if (!acesso) {
+        alert('Por favor, preencha o campo de CNPJ ou E-mail acima antes de clicar em "Esqueci minha senha".');
+        return;
+    }
+
+    const res = await DBService.buscarClientePorAcesso(acesso);
+    
+    if (res.success) {
+        const cliente = res.cliente;
+        let mensagem = `Olá LM Segurança! Estou solicitando a recuperação de senha da minha conta.\n\n`;
+        mensagem += `*Empresa:* ${cliente.razaoSocial}\n`;
+        mensagem += `*CNPJ:* ${cliente.cnpj}\n`;
+        mensagem += `*E-mail:* ${cliente.email}\n`;
+        mensagem += `*Responsável:* ${cliente.responsavel || 'N/A'}\n\n`;
+        mensagem += `Por favor, redefinam minha senha de acesso. Obrigado!`;
+
+        alert('✅ Conta localizada!\n\nVocê será redirecionado ao WhatsApp para solicitar a redefinição de senha ao administrador.');
+        
+        const whatsappUrl = `https://wa.me/5518991526770?text=${encodeURIComponent(mensagem)}`;
+        window.open(whatsappUrl, '_blank');
+    } else {
+        alert('❌ Nenhuma conta encontrada com este CNPJ ou E-mail.\nVerifique os dados e tente novamente.');
+    }
+});
+
 // Resumo e estado da sessão do cliente
 async function renderAreaCliente() {
     const userStr = sessionStorage.getItem('lm_user');
@@ -321,13 +356,17 @@ async function renderAreaCliente() {
     const agendamentos = await DBService.getAgendamentosPorCliente(user.id);
     const tbody = document.getElementById('lista-meus-agendamentos');
     if (tbody) {
-        tbody.innerHTML = agendamentos.map(a => `
+        tbody.innerHTML = agendamentos.map(a => {
+            const statusColors = { 'Pendente': '#f59e0b', 'Em Andamento': '#3b82f6', 'Concluído': '#10b981', 'Cancelado': '#ef4444' };
+            const statusColor = statusColors[a.status] || '#f59e0b';
+            return `
             <tr style="border-bottom: 1px solid var(--c-gray-200);">
+                <td style="padding: 1rem;"><span style="background: var(--c-primary); color: white; padding: 0.15rem 0.5rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.5px;">${a.codigo || '---'}</span></td>
                 <td style="padding: 1rem;"><strong>${a.servico}</strong><br><small style="color:gray">${a.observacoes || ''}</small></td>
                 <td style="padding: 1rem;">${a.dataAgendamento}</td>
-                <td style="padding: 1rem;"><span style="color: ${a.status === 'Pendente' ? '#f59e0b' : '#10b981'}; font-weight: 500;">${a.status || 'Pendente'}</span></td>
-            </tr>
-        `).join('') || `<tr><td colspan="3" style="padding: 1rem;">Nenhuma solicitação encontrada.</td></tr>`;
+                <td style="padding: 1rem;"><span style="color: ${statusColor}; font-weight: 500;">${a.status || 'Pendente'}</span></td>
+            </tr>`;
+        }).join('') || `<tr><td colspan="4" style="padding: 1rem;">Nenhuma solicitação encontrada.</td></tr>`;
     }
 }
 

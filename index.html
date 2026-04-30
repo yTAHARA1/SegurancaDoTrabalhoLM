@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LM Segurança e Saúde do Trabalho</title>
+    <meta name="description"
+        content="Soluções eficientes e personalizadas em Segurança e Saúde do Trabalho. Elaboração de PGR, PCMSO, LTCAT e Treinamentos NR.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar" id="navbar">
+        <div class="container nav-container">
+            <div class="logo">
+                <!-- Substitua 'logo.png' pelo nome da foto que você salvou na pasta assets/img -->
+                <img src="assets/img/logo.jpeg" alt="Logo LM Segurança e Saúde" class="logo-img" id="main-logo">
+            </div>
+
+            <div class="nav-links" id="nav-links">
+                <a href="#home" class="nav-link active" data-target="home">Início</a>
+                <a href="#servicos" class="nav-link" data-target="servicos">Serviços</a>
+                <a href="#noticias" class="nav-link" data-target="noticias">Notícias</a>
+                <a href="#galeria" class="nav-link" data-target="galeria">Galeria</a>
+                <a href="#contato" class="nav-link" data-target="contato">Contato</a>
+            </div>
+
+            <div class="nav-actions">
+                <div id="auth-buttons" style="display:flex; gap:10px;">
+                    <button class="btn btn-outline" id="btnLoginModal">
+                        <i data-lucide="log-in"></i> Login
+                    </button>
+                    <button class="btn btn-primary" id="btnCadastroModal" style="padding: 0.5rem 1rem;">
+                        <i data-lucide="user-plus"></i> Cadastro
+                    </button>
+                </div>
+                <div id="user-menu" style="display:none; align-items:center; gap:10px;">
+                    <button class="btn btn-primary" id="btnAreaCliente" onclick="document.querySelector('.nav-link[data-target=\'area-cliente\']')?.click() || switchView('area-cliente')">
+                        <i data-lucide="user"></i> Meu Painel
+                    </button>
+                </div>
+                <div class="mobile-toggle" id="mobile-toggle">
+                    <i data-lucide="menu"></i>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main id="app-content">
+        <!-- SPA views will be toggled by JS. Default is home view. -->
+        <div id="view-home" class="view active">
+            <!-- Hero Section -->
+            <section class="hero" id="home">
+                <div class="hero-bg-overlay"></div>
+                <div class="container hero-content">
+                    <h1 class="hero-title">Segurança e Saúde de <span class="text-gradient">Excelência</span> para seu
+                        Negócio</h1>
+                    <p class="hero-subtitle">"Protegendo sua empresa e seus colaboradores"<br><br>Garantimos a proteção
+                        dos seus colaboradores por meio de soluções eficientes, personalizadas e rigorosamente dentro
+                        das normas.</p>
+                    <div class="hero-buttons">
+                        <button class="btn btn-primary" id="btnAgendamentoHome">
+                            <i data-lucide="calendar"></i> Agendar Serviço
+                        </button>
+                        <a href="#servicos" class="btn btn-secondary">Conheça Nossas Soluções</a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Features / About -->
+            <section class="features">
+                <div class="container">
+                    <div class="section-header">
+                        <h2 class="section-title">Por que escolher a LM?</h2>
+                        <p class="section-desc">Nosso compromisso é com a vida e com a conformidade legal da sua
+                            empresa.</p>
+                    </div>
+
+                    <div class="grid grid-3">
+                        <div class="feature-card">
+                            <div class="icon-wrapper">
+                                <i data-lucide="shield-check"></i>
+                            </div>
+                            <h3>Conformidade Legal</h3>
+                            <p>Elaboração minuciosa de PGR, PCMSO e LTCAT garantindo aprovação total nas auditorias.</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="icon-wrapper">
+                                <i data-lucide="users"></i>
+                            </div>
+                            <h3>Treinamentos Focados</h3>
+                            <p>Equipe qualificada para aplicar treinamentos das NRs diretamente na sua empresa.</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="icon-wrapper">
+                                <i data-lucide="bar-chart"></i>
+                            </div>
+                            <h3>Gestão de Riscos</h3>
+                            <p>Acompanhamento e consultoria completa para redução e neutralização de riscos.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Services -->
+            <section class="services bg-light" id="servicos">
+                <div class="container">
+                    <div class="section-header">
+                        <h2 class="section-title">Nossos Serviços Prioritários</h2>
+                    </div>
+                    <div class="grid grid-2" id="servicos-vitrine-container">
+                        <!-- Preenchido dinamicamente pelo JS -->
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div id="view-noticias" class="view">
+            <!-- News Section -->
+            <section class="news" id="noticias">
+                <div class="container">
+                    <div class="section-header">
+                        <h2 class="section-title">Notícias e Atualizações</h2>
+                        <div class="search-box">
+                            <i data-lucide="search"></i>
+                            <input type="text" id="news-search" placeholder="Buscar por tema (ex. NR 35)...">
+                        </div>
+                    </div>
+                    <div class="grid grid-3" id="news-container">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div id="view-galeria" class="view">
+            <!-- Gallery Section -->
+            <section class="gallery" id="galeria">
+                <div class="container">
+                    <div class="section-header">
+                        <h2 class="section-title">Galeria de Ações</h2>
+                    </div>
+                    <div class="grid grid-4" id="gallery-container">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div id="view-contato" class="view">
+            <!-- Contact Section -->
+            <section class="contact" id="contato">
+                <div class="container contact-container">
+                    <div class="contact-info">
+                        <h2>Fale Conosco</h2>
+                        <p>Pronto para melhorar a segurança da sua empresa? Entre em contato agora.</p>
+
+                        <div class="info-item">
+                            <i data-lucide="map-pin"></i>
+                            <span>Araçatuba - SP</span>
+                        </div>
+                        <div class="info-item">
+                            <i data-lucide="phone"></i>
+                            <span>(18) 99152-6770</span>
+                        </div>
+                        <div class="info-item">
+                            <i data-lucide="mail"></i>
+                            <span>contato@lmseguranca.com.br</span>
+                        </div>
+                    </div>
+
+                    <form class="contact-form glass-panel" id="contactForm">
+                        <div class="form-group">
+                            <label>Nome Completo</label>
+                            <input type="text" placeholder="Seu nome" id="contato-nome" required>
+                        </div>
+                        <div class="form-group">
+                            <label>E-mail</label>
+                            <input type="email" placeholder="Seu melhor e-mail" id="contato-email" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Mensagem</label>
+                            <textarea placeholder="Como podemos ajudar?" rows="4" id="contato-msg" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">Enviar Mensagem</button>
+                    </form>
+                </div>
+            </section>
+        </div>
+
+        <div id="view-area-cliente" class="view">
+            <section class="area-cliente" id="area-cliente" style="padding: 100px 0; min-height: 70vh;">
+                <div class="container">
+                    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 2rem;">
+                        <div style="text-align: left;">
+                            <h2 class="section-title">Meu Painel</h2>
+                            <p class="section-desc" id="cliente-nome-display" style="margin:0;">Bem-vindo, Cliente.</p>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button class="btn btn-primary" onclick="document.getElementById('btnAgendamentoHome').click()"><i data-lucide="plus"></i> Nova Solicitação</button>
+                            <button class="btn btn-outline" id="btnLogout"><i data-lucide="log-out"></i> Sair</button>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-panel" style="padding: 2rem; border-radius: 12px;">
+                        <h3 style="margin-bottom: 1rem;">Minhas Solicitações de Serviço</h3>
+                        <div style="overflow-x:auto;">
+                            <table class="data-table" style="width: 100%; text-align: left; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid var(--c-gray-200); background-color: var(--c-gray-100);">
+                                        <th style="padding: 1rem;">Serviço</th>
+                                        <th style="padding: 1rem;">Data Preferencial</th>
+                                        <th style="padding: 1rem;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-meus-agendamentos">
+                                    <!-- Filled by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer style="position:relative;">
+        <!-- Botão secreto de administrador -->
+        <a href="admin.html" style="position:absolute; bottom: 10px; right: 10px; opacity: 0.1; font-size: 10px; cursor: default;">π</a>
+        <div class="container footer-content">
+            <div class="footer-brand">
+                <img src="assets/img/logo.png" alt="Logo LM Segurança e Saúde" class="logo-img-footer">
+                <p>Referência regional em Segurança do Trabalho, reconhecida pela ética e confiança.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Empresa</h4>
+                <a href="#home">Início</a>
+                <a href="#servicos">Serviços</a>
+                <a href="#noticias">Notícias</a>
+                <a href="#contato">Contato</a>
+            </div>
+            <div class="footer-social">
+                <h4>Siga-nos</h4>
+                <div class="social-icons">
+                    <a href="https://instagram.com/lmsegurancaesst" target="_blank"><i data-lucide="instagram"></i></a>
+                    <a href="#"><i data-lucide="linkedin"></i></a>
+                    <a href="#"><i data-lucide="facebook"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 LM Segurança e Saúde. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Floating WhatsApp -->
+    <a href="https://wa.me/5518991526770" target="_blank" class="float-whatsapp">
+        <i data-lucide="message-circle" fill="white"></i>
+    </a>
+
+    <!-- Login Modal -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content glass-panel login-panel">
+            <div class="modal-close" id="closeLoginModal"><i data-lucide="x"></i></div>
+            <h2 class="modal-title">Área do Cliente</h2>
+            <p class="modal-desc">Faça login para acessar os documentos da sua empresa e emitir certificados.</p>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>CNPJ ou E-mail</label>
+                    <input type="text" id="login-acesso" placeholder="Digite seu acesso" required>
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" id="login-senha" placeholder="Sua senha" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-full" id="btnFazerLogin"><i data-lucide="log-in"></i> Entrar</button>
+                <p style="text-align:center; margin-top: 1rem; color: var(--c-gray-600); cursor: pointer;" onclick="document.getElementById('closeLoginModal').click(); document.getElementById('btnCadastroModal').click();">Não tem acesso? <strong>Cadastre-se</strong></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Cadastro Modal -->
+    <div class="modal" id="cadastroModal">
+        <div class="modal-content glass-panel login-panel">
+            <div class="modal-close" id="closeCadastroModal"><i data-lucide="x"></i></div>
+            <h2 class="modal-title">Cadastro de Cliente</h2>
+            <p class="modal-desc">Cadastre sua empresa para gerenciar solicitações e laudos de SST.</p>
+            <form id="cadastroForm">
+                <div class="form-group">
+                    <label>Razão Social / Nome Fantasia</label>
+                    <input type="text" id="cad-empresa" placeholder="Sua empresa LTDA" required>
+                </div>
+                <div class="form-group">
+                    <label>CNPJ</label>
+                    <input type="text" id="cad-cnpj" placeholder="00.000.000/0001-00" required>
+                </div>
+                <div class="form-group">
+                    <label>Nome do Responsável</label>
+                    <input type="text" id="cad-responsavel" placeholder="Nome do encarregado" required>
+                </div>
+                <div class="form-group">
+                    <label>E-mail corporativo</label>
+                    <input type="email" id="cad-email" placeholder="contato@empresa.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Telefone / Celular</label>
+                    <input type="text" id="cad-telefone" placeholder="(00) 00000-0000" required>
+                </div>
+                <div class="form-group">
+                    <label>Crie uma Senha para o Acesso</label>
+                    <input type="password" id="cad-senha" placeholder="Mínimo de 6 caracteres" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-full"><i data-lucide="check-circle"></i> Enviar Cadastro</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Agendamento Modal -->
+    <div class="modal" id="agendamentoModal">
+        <div class="modal-content glass-panel agendamento-panel">
+            <div class="modal-close" id="closeAgendamentoModal"><i data-lucide="x"></i></div>
+            <h2 class="modal-title">Agendar Serviço</h2>
+            <p class="modal-desc">Escolha uma data para nossa equipe realizar o levantamento ou treinamento.</p>
+            <form id="agendamentoForm">
+                <div class="form-group">
+                    <label>Serviço Desejado</label>
+                    <select id="agendamento-servico" required>
+                        <option value="">Carregando serviços...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Data Preferencial</label>
+                    <input type="date" id="agendamento-data" required>
+                </div>
+                <div class="form-group">
+                    <label>Observações</label>
+                    <textarea id="agendamento-obs" rows="3" placeholder="Informações adicionais..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary w-full"><i data-lucide="calendar-check"></i> Solicitar
+                    Agendamento</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Database Engine (Firebase setup / local fallback) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="assets/js/db.js"></script>
+    <script src="assets/js/main.js"></script>
+</body>
+
+</html>

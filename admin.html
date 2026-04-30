@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador CMS - LM Segurança</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        body { background-color: var(--c-gray-100); display: none; } /* Esconde o body até a senha estar correta */
+        .admin-header {
+            background-color: var(--c-accent); /* Dark Blue */
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .admin-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .admin-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            background: var(--c-white);
+            color: var(--c-gray-600);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: var(--shadow-sm);
+        }
+        .tab-btn.active {
+            background: var(--c-primary);
+            color: white;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--c-white);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+        .data-table th, .data-table td {
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 1px solid var(--c-gray-200);
+        }
+        .data-table th {
+            background-color: var(--c-gray-100);
+            font-weight: 600;
+            color: var(--c-gray-800);
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm);
+        }
+        
+    </style>
+</head>
+<body>
+
+    <header class="admin-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="shield"></i>
+            <h2>LM Segurança - CMS Administrativo</h2>
+        </div>
+        <a href="index.html" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Sair</a>
+    </header>
+
+    <div class="admin-container">
+        <div class="admin-tabs">
+            <button class="tab-btn active" onclick="showTab('clientes')"><i data-lucide="users" style="display:inline-block; vertical-align:middle; width: 18px;"></i> Clientes</button>
+            <button class="tab-btn" onclick="showTab('agendamentos')"><i data-lucide="calendar" style="display:inline-block; vertical-align:middle; width: 18px;"></i> Agendamentos</button>
+            <button class="tab-btn" onclick="showTab('noticias')"><i data-lucide="newspaper" style="display:inline-block; vertical-align:middle; width: 18px;"></i> Gerenciar Notícias</button>
+            <button class="tab-btn" onclick="showTab('galeria')"><i data-lucide="image" style="display:inline-block; vertical-align:middle; width: 18px;"></i> Gerenciar Galeria</button>
+            <button class="tab-btn" onclick="showTab('servicos')"><i data-lucide="list" style="display:inline-block; vertical-align:middle; width: 18px;"></i> Opções de Agendamento</button>
+            <button class="tab-btn" onclick="showTab('vitrine')"><i data-lucide="layout-grid" style="display:inline-block; vertical-align:middle; width: 18px;"></i> Serviços do Site</button>
+            <button class="tab-btn" onclick="showTab('admins')"><i data-lucide="shield-alert" style="display:inline-block; vertical-align:middle; width: 18px;"></i> Gerenciar Admins</button>
+        </div>
+
+        <!-- Clientes Tab -->
+        <div id="tab-clientes" class="tab-content active">
+            <h2>Empresas Cadastradas</h2><br>
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Razão Social</th>
+                            <th>CNPJ</th>
+                            <th>E-mail</th>
+                            <th>Telefone</th>
+                            <th>Ações Administrativas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-clientes"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Agendamentos Tab -->
+        <div id="tab-agendamentos" class="tab-content">
+            <h2>Solicitações de Serviço</h2><br>
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Serviço Solicitado</th>
+                            <th>Data Pretendida</th>
+                            <th>Observações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-agendamentos"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Notícias Tab -->
+        <div id="tab-noticias" class="tab-content">
+            <h2>Adicionar Nova Notícia</h2>
+            <form class="form-grid" id="formNoticia">
+                <div class="form-group"><label>Título</label><input type="text" id="not-title" required></div>
+                <div class="form-group"><label>Resumo</label><textarea id="not-resumo" rows="3" required></textarea></div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                    <div class="form-group"><label>Categoria / Tag</label><input type="text" id="not-tag" placeholder="Ex: Legislação" required></div>
+                    <div class="form-group"><label>Link da Imagem JPG/PNG</label><input type="url" id="not-img" required></div>
+                </div>
+                <button type="submit" class="btn btn-primary">Adicionar ao Blog</button>
+            </form>
+            <h3>Notícias Ativas no Site</h3>
+            <div style="overflow-x:auto; margin-top:1rem;">
+                <table class="data-table">
+                    <thead><tr><th>Foto</th><th>Título</th><th>Ação</th></tr></thead>
+                    <tbody id="lista-noticias"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Galeria Tab -->
+        <div id="tab-galeria" class="tab-content">
+            <h2>Adicionar Foto à Galeria</h2>
+            <form class="form-grid" id="formGaleria" style="display:flex; align-items:flex-end; gap:1rem;">
+                <div class="form-group" style="flex:1;"><label>Link da Foto (URL direta da imagem)</label><input type="url" id="gal-img" required></div>
+                <button type="submit" class="btn btn-primary" style="margin-bottom:1.5rem;">Adicionar Foto</button>
+            </form>
+            <h3>Fotos Ativas no Site</h3>
+            <div style="overflow-x:auto; margin-top:1rem;">
+                <table class="data-table">
+                    <thead><tr><th>Foto / URL</th><th>Ação</th></tr></thead>
+                    <tbody id="lista-galeria"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Admins Tab -->
+        <div id="tab-admins" class="tab-content">
+            <h2>Criar Novo Administrador</h2>
+            <form class="form-grid" id="formAdmin">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                    <div class="form-group"><label>Nome de Usuário</label><input type="text" id="admin-user" required></div>
+                    <div class="form-group"><label>Senha Segura</label><input type="password" id="admin-pass" required></div>
+                </div>
+                <button type="submit" class="btn btn-primary">Salvar Conta Admin</button>
+            </form>
+            <h3>Administradores do Sistema</h3>
+            <div style="overflow-x:auto; margin-top:1rem;">
+                <table class="data-table">
+                    <thead><tr><th>Usuário de Acesso</th><th>Data de Criação</th><th>Ação</th></tr></thead>
+                    <tbody id="lista-admins"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Servicos Tab -->
+        <div id="tab-servicos" class="tab-content">
+            <h2>Criar Novo Serviço para Agendamento</h2>
+            <form class="form-grid" id="formServico" style="display:flex; align-items:flex-end; gap:1rem;">
+                <div class="form-group" style="flex:1;"><label>Nome / Título do Serviço</label><input type="text" id="serv-nome" placeholder="Ex: Treinamento NR-10" required></div>
+                <button type="submit" class="btn btn-primary" style="margin-bottom:1.5rem;">Adicionar Serviço</button>
+            </form>
+            <h3>Serviços Ativos no Painel do Cliente</h3>
+            <div style="overflow-x:auto; margin-top:1rem;">
+                <table class="data-table">
+                    <thead><tr><th>Nome do Serviço</th><th>Ação</th></tr></thead>
+                    <tbody id="lista-servicos"></tbody>
+                </table>
+            </div>
+        </div>
+        <!-- Vitrine Tab -->
+        <div id="tab-vitrine" class="tab-content">
+            <h2>Adicionar Card de Serviço ao Site</h2>
+            <form class="form-grid" id="formVitrine">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                    <div class="form-group"><label>Título do Card</label><input type="text" id="vit-titulo" placeholder="Ex: Auditorias e Inspeções" required></div>
+                    <div class="form-group">
+                        <label>Ícone</label>
+                        <select id="vit-icone" required>
+                            <option value="file-text">Documento</option>
+                            <option value="graduation-cap">Treinamento</option>
+                            <option value="search">Inspeção / Auditoria</option>
+                            <option value="headphones">Consultoria</option>
+                            <option value="shield-check">Conformidade</option>
+                            <option value="hard-hat">Segurança</option>
+                            <option value="clipboard-list">Relatório</option>
+                            <option value="users">Equipe</option>
+                            <option value="bar-chart">Análise</option>
+                            <option value="alert-triangle">Riscos</option>
+                            <option value="heart">Saúde</option>
+                            <option value="tool">Manutenção</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group"><label>Descrição do Serviço</label><textarea id="vit-descricao" rows="3" placeholder="Descreva o serviço que será exibido no site..." required></textarea></div>
+                <button type="submit" class="btn btn-primary">Publicar Card no Site</button>
+            </form>
+            <h3 style="margin-top:1.5rem;">Cards Ativos na Página de Serviços</h3>
+            <div style="overflow-x:auto; margin-top:1rem;">
+                <table class="data-table">
+                    <thead><tr><th>Ícone</th><th>Título</th><th>Descrição</th><th>Ação</th></tr></thead>
+                    <tbody id="lista-vitrine"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Firebase e Lógica -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="assets/js/db.js"></script>
+    
+    <script>
+        // Verificação de Segurança por Sessão de Admin
+        if (sessionStorage.getItem('adminAuth') === 'true') {
+            document.body.style.display = 'block';
+        } else {
+            window.location.href = 'index.html';
+        }
+
+        lucide.createIcons();
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        // CARGAS DINÂMICAS
+        async function carregarDados() {
+            // Clientes
+            const clientes = await DBService.getClientes();
+            document.getElementById('lista-clientes').innerHTML = clientes.map(c => `
+                <tr>
+                    <td><strong>${c.razaoSocial}</strong></td>
+                    <td>${c.cnpj}</td>
+                    <td>${c.email}</td>
+                    <td>${c.telefone}</td>
+                    <td style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                        <button onclick="mudarSenha('${c.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem;">Alterar Senha</button>
+                        <button onclick="deletarCliente('${c.id}')" style="color:red; cursor:pointer; background:none; border:1px solid red; border-radius:6px; padding:0.3rem 0.6rem; font-size:0.8rem;">Remover</button>
+                    </td>
+                </tr>
+            `).join('') || `<tr><td colspan="5">Vazio</td></tr>`;
+
+            // Agendamentos
+            const agendamentos = await DBService.getAgendamentos();
+            document.getElementById('lista-agendamentos').innerHTML = agendamentos.map(a => `
+                <tr><td><strong>${a.servico}</strong></td><td>${a.dataAgendamento}</td><td>${a.observacoes || '-'}</td></tr>
+            `).join('') || `<tr><td colspan="3">Vazio</td></tr>`;
+
+            // Notícias
+            const noticias = await DBService.getNoticias();
+            document.getElementById('lista-noticias').innerHTML = noticias.map(n => `
+                <tr>
+                    <td><img src="${n.imagem}" style="width:50px; border-radius:4px;"></td>
+                    <td>${n.titulo}</td>
+                    <td><button onclick="deletarNoticia('${n.id}')" style="color:red; cursor:pointer; background:none; border:none;">Remover</button></td>
+                </tr>
+            `).join('') || `<tr><td colspan="3">Vazio</td></tr>`;
+
+            // Galeria
+            const galeria = await DBService.getGaleria();
+            document.getElementById('lista-galeria').innerHTML = galeria.map(g => `
+                <tr>
+                    <td><img src="${g.url}" style="width:50px; border-radius:4px;"> </td>
+                    <td><button onclick="deletarGaleria('${g.id}')" style="color:red; cursor:pointer; background:none; border:none;">Remover</button></td>
+                </tr>
+            `).join('') || `<tr><td colspan="2">Vazio</td></tr>`;
+
+            // Admins
+            const admins = await DBService.getAdmins();
+            document.getElementById('lista-admins').innerHTML = admins.map(a => `
+                <tr>
+                    <td>${a.usuario}</td>
+                    <td>${a.dataCriacao ? new Date(a.dataCriacao).toLocaleDateString() : 'N/A'}</td>
+                    <td><button onclick="deletarAdmin('${a.id}')" style="color:red; cursor:pointer; background:none; border:none;">Remover</button></td>
+                </tr>
+            `).join('') || `<tr><td colspan="3">Vazio</td></tr>`;
+
+            // Serviços
+            const servicos = await DBService.getServicos();
+            document.getElementById('lista-servicos').innerHTML = servicos.map(s => `
+                <tr>
+                    <td><strong>${s.nome}</strong></td>
+                    <td><button onclick="deletarServico('${s.id}')" style="color:red; cursor:pointer; background:none; border:none;">Remover</button></td>
+                </tr>
+            `).join('') || `<tr><td colspan="2">Nenhum serviço cadastrado.</td></tr>`;
+
+            // Vitrine de serviços do site
+            const vitrine = await DBService.getServicosVitrine();
+            document.getElementById('lista-vitrine').innerHTML = vitrine.map(v => `
+                <tr>
+                    <td><i data-lucide="${v.icone}" style="width:20px;"></i></td>
+                    <td><strong>${v.titulo}</strong></td>
+                    <td style="max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${v.descricao}</td>
+                    <td><button onclick="deletarVitrine('${v.id}')" style="color:red; cursor:pointer; background:none; border:none;">Remover</button></td>
+                </tr>
+            `).join('') || `<tr><td colspan="4">Nenhum card cadastrado. Os 4 padrões serão exibidos.</td></tr>`;
+            lucide.createIcons();
+        }
+
+        // AÇÕES DO ADMIN
+        async function mudarSenha(clienteId) {
+            const novaSenha = prompt('Digite a nova senha para o cliente (ela passará a valer na mesma hora):');
+            if (novaSenha && novaSenha.length >= 6) {
+                await DBService.alterarSenhaCliente(clienteId, novaSenha);
+                alert('Senha alterada com sucesso! O cliente já pode logar com a nova senha.');
+            } else if (novaSenha) { alert('A senha deve ter pelo menos 6 caracteres.'); }
+        }
+
+        async function deletarCliente(id) {
+            if(confirm('Tem certeza que deseja REMOVER permanentemente este cliente? Esta ação não pode ser desfeita.')) {
+                await DBService.deleteCliente(id);
+                await carregarDados();
+                alert('Cliente removido com sucesso.');
+            }
+        }
+
+        async function deletarNoticia(id) {
+            if(confirm('Apagar esta notícia do Blog?')) { await DBService.deleteNoticia(id); carregarDados(); }
+        }
+        
+        async function deletarGaleria(id) {
+            if(confirm('Apagar esta imagem da Galeria?')) { await DBService.deleteGaleria(id); carregarDados(); }
+        }
+
+        document.getElementById('formNoticia').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await DBService.addNoticia({
+                titulo: document.getElementById('not-title').value,
+                resumo: document.getElementById('not-resumo').value,
+                tag: document.getElementById('not-tag').value,
+                imagem: document.getElementById('not-img').value
+            });
+            e.target.reset();
+            carregarDados();
+            alert('Notícia publicada no site!');
+        });
+
+        document.getElementById('formGaleria').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await DBService.addGaleria(document.getElementById('gal-img').value);
+            e.target.reset();
+            carregarDados();
+            alert('Foto publicada no site!');
+        });
+
+        async function deletarAdmin(id) {
+            if(confirm('Apagar esta conta de administrador? Ele perderá o acesso ao painel imediatamente.')) {
+                await DBService.deleteAdmin(id);
+                carregarDados();
+            }
+        }
+
+        async function deletarServico(id) {
+            if(confirm('Tem certeza que deseja apagar este serviço das opções de agendamento?')) {
+                await DBService.deleteServico(id);
+                carregarDados();
+            }
+        }
+
+        document.getElementById('formAdmin')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await DBService.salvarAdmin({
+                usuario: document.getElementById('admin-user').value,
+                senha: document.getElementById('admin-pass').value
+            });
+            e.target.reset();
+            carregarDados();
+            alert('Novo Administrador criado com sucesso!');
+        });
+
+        document.getElementById('formServico')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await DBService.addServico(document.getElementById('serv-nome').value);
+            e.target.reset();
+            carregarDados();
+            alert('Serviço adicionado com sucesso!');
+        });
+
+        async function deletarVitrine(id) {
+            if(confirm('Remover este card da página de Serviços do site?')) {
+                await DBService.deleteServicoVitrine(id);
+                await carregarDados();
+            }
+        }
+
+        document.getElementById('formVitrine')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await DBService.addServicoVitrine({
+                titulo: document.getElementById('vit-titulo').value,
+                descricao: document.getElementById('vit-descricao').value,
+                icone: document.getElementById('vit-icone').value
+            });
+            e.target.reset();
+            await carregarDados();
+            alert('Card publicado na página de Serviços!');
+        });
+
+        window.addEventListener('DOMContentLoaded', carregarDados);
+    </script>
+</body>
+</html>

@@ -73,6 +73,18 @@
             margin-bottom: 2rem;
             box-shadow: var(--shadow-sm);
         }
+        /* Modal de Histórico */
+        .hist-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:1000; align-items:center; justify-content:center; }
+        .hist-modal-overlay.active { display:flex; }
+        .hist-modal { background:white; border-radius:16px; padding:2rem; width:90%; max-width:700px; max-height:80vh; overflow-y:auto; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+        .hist-modal h3 { margin-bottom:1rem; color:var(--c-accent); }
+        .hist-close { position:absolute; top:1rem; right:1rem; background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--c-gray-600); }
+        .status-badge { padding:0.25rem 0.7rem; border-radius:999px; font-size:0.78rem; font-weight:600; }
+        .status-Pendente { background:#fef3c7; color:#92400e; }
+        .status-Em\ Andamento { background:#dbeafe; color:#1e40af; }
+        .status-Conclu\00EDdo { background:#d1fae5; color:#065f46; }
+        .status-Cancelado { background:#fee2e2; color:#991b1b; }
+        .status-select { padding:0.3rem 0.5rem; border-radius:6px; border:1px solid var(--c-gray-300); font-size:0.85rem; cursor:pointer; }
         
     </style>
 </head>
@@ -85,6 +97,15 @@
         </div>
         <a href="index.html" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Sair</a>
     </header>
+
+    <!-- Modal Histórico do Cliente -->
+    <div class="hist-modal-overlay" id="histModalOverlay">
+        <div class="hist-modal">
+            <button class="hist-close" onclick="document.getElementById('histModalOverlay').classList.remove('active')">&times;</button>
+            <h3 id="hist-modal-title">Histórico do Cliente</h3>
+            <div id="hist-modal-body">Carregando...</div>
+        </div>
+    </div>
 
     <div class="admin-container">
         <div class="admin-tabs">
@@ -108,7 +129,8 @@
                             <th>CNPJ</th>
                             <th>E-mail</th>
                             <th>Telefone</th>
-                            <th>Ações Administrativas</th>
+                            <th>Serviços</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody id="lista-clientes"></tbody>
@@ -125,7 +147,9 @@
                         <tr>
                             <th>Serviço Solicitado</th>
                             <th>Data Pretendida</th>
+                            <th>Cliente</th>
                             <th>Observações</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody id="lista-agendamentos"></tbody>
@@ -267,26 +291,54 @@
 
         // CARGAS DINÂMICAS
         async function carregarDados() {
-            // Clientes
-            const clientes = await DBService.getClientes();
-            document.getElementById('lista-clientes').innerHTML = clientes.map(c => `
+            // Busca tudo em paralelo
+            const [clientes, agendamentos] = await Promise.all([
+                DBService.getClientes(),
+                DBService.getAgendamentos()
+            ]);
+
+            // Clientes + contagem de abertos
+            document.getElementById('lista-clientes').innerHTML = clientes.map(c => {
+                const ags = agendamentos.filter(a => a.clienteId === c.id);
+                const abertos = ags.filter(a => a.status === 'Pendente' || a.status === 'Em Andamento').length;
+                const badge = abertos > 0
+                    ? `<span style="background:#fef3c7; color:#92400e; padding:0.2rem 0.6rem; border-radius:999px; font-size:0.78rem; font-weight:600;">${abertos} aberto${abertos > 1 ? 's' : ''}</span>`
+                    : `<span style="background:#d1fae5; color:#065f46; padding:0.2rem 0.6rem; border-radius:999px; font-size:0.78rem;">Em dia</span>`;
+                return `
                 <tr>
                     <td><strong>${c.razaoSocial}</strong></td>
                     <td>${c.cnpj}</td>
                     <td>${c.email}</td>
                     <td>${c.telefone}</td>
+                    <td>${badge}</td>
                     <td style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                        <button onclick="mudarSenha('${c.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem;">Alterar Senha</button>
+                        <button onclick="verHistorico('${c.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem;">Histórico</button>
+                        <button onclick="mudarSenha('${c.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem;">Senha</button>
                         <button onclick="deletarCliente('${c.id}')" style="color:red; cursor:pointer; background:none; border:1px solid red; border-radius:6px; padding:0.3rem 0.6rem; font-size:0.8rem;">Remover</button>
                     </td>
-                </tr>
-            `).join('') || `<tr><td colspan="5">Vazio</td></tr>`;
+                </tr>`;
+            }).join('') || `<tr><td colspan="6">Vazio</td></tr>`;
 
-            // Agendamentos
-            const agendamentos = await DBService.getAgendamentos();
-            document.getElementById('lista-agendamentos').innerHTML = agendamentos.map(a => `
-                <tr><td><strong>${a.servico}</strong></td><td>${a.dataAgendamento}</td><td>${a.observacoes || '-'}</td></tr>
-            `).join('') || `<tr><td colspan="3">Vazio</td></tr>`;
+            // Agendamentos com status e cliente
+            document.getElementById('lista-agendamentos').innerHTML = agendamentos.map(a => {
+                const clienteNome = a.clienteNome || (clientes.find(c => c.id === a.clienteId)?.razaoSocial) || 'Visitante';
+                const statusClass = (a.status || 'Pendente').replace(' ', '-');
+                return `
+                <tr>
+                    <td><strong>${a.servico}</strong></td>
+                    <td>${a.dataAgendamento}</td>
+                    <td style="max-width:150px; font-size:0.85rem; color:gray;">${clienteNome}</td>
+                    <td style="max-width:180px; font-size:0.85rem;">${a.observacoes || '-'}</td>
+                    <td>
+                        <select class="status-select" onchange="mudarStatusAgendamento('${a.id}', this.value)">
+                            <option value="Pendente"          ${(a.status||'Pendente')==='Pendente'          ?'selected':''}>Pendente</option>
+                            <option value="Em Andamento"      ${(a.status||'')==='Em Andamento'             ?'selected':''}>Em Andamento</option>
+                            <option value="Concluído"         ${(a.status||'')==='Concluído'              ?'selected':''}>Concluído</option>
+                            <option value="Cancelado"         ${(a.status||'')==='Cancelado'               ?'selected':''}>Cancelado</option>
+                        </select>
+                    </td>
+                </tr>`;
+            }).join('') || `<tr><td colspan="5">Vazio</td></tr>`;
 
             // Notícias
             const noticias = await DBService.getNoticias();
@@ -354,6 +406,45 @@
                 await carregarDados();
                 alert('Cliente removido com sucesso.');
             }
+        }
+
+        async function verHistorico(clienteId) {
+            const overlay = document.getElementById('histModalOverlay');
+            document.getElementById('hist-modal-body').innerHTML = '<p>Carregando...</p>';
+            overlay.classList.add('active');
+
+            const ags = await DBService.getAgendamentosPorCliente(clienteId);
+            const statusColor = { 'Pendente': '#fef3c7', 'Em Andamento': '#dbeafe', 'Concluído': '#d1fae5', 'Cancelado': '#fee2e2' };
+            const statusText = { 'Pendente': '#92400e', 'Em Andamento': '#1e40af', 'Concluído': '#065f46', 'Cancelado': '#991b1b' };
+
+            if (ags.length === 0) {
+                document.getElementById('hist-modal-body').innerHTML = '<p style="color:gray;">Nenhuma solicitação encontrada para este cliente.</p>';
+                return;
+            }
+
+            document.getElementById('hist-modal-body').innerHTML = `
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead><tr style="border-bottom:2px solid #e5e7eb; text-align:left;">
+                        <th style="padding:0.7rem;">Serviço</th>
+                        <th style="padding:0.7rem;">Data</th>
+                        <th style="padding:0.7rem;">Status</th>
+                    </tr></thead>
+                    <tbody>
+                        ${ags.map(a => {
+                            const s = a.status || 'Pendente';
+                            return `<tr style="border-bottom:1px solid #f3f4f6;">
+                                <td style="padding:0.7rem;"><strong>${a.servico}</strong>${a.observacoes ? `<br><small style="color:gray;">${a.observacoes}</small>` : ''}</td>
+                                <td style="padding:0.7rem;">${a.dataAgendamento}</td>
+                                <td style="padding:0.7rem;"><span style="background:${statusColor[s]||'#e5e7eb'}; color:${statusText[s]||'#374151'}; padding:0.2rem 0.7rem; border-radius:999px; font-size:0.8rem; font-weight:600;">${s}</span></td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        async function mudarStatusAgendamento(id, novoStatus) {
+            await DBService.updateAgendamentoStatus(id, novoStatus);
         }
 
         async function deletarNoticia(id) {

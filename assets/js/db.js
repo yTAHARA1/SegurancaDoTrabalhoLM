@@ -299,5 +299,14 @@ const DBService = {
             return s.docs.map(d => ({ id: d.id, ...d.data() }));
         }
         return JSON.parse(localStorage.getItem('lm_agendamentos') || '[]');
+    },
+    async updateAgendamentoStatus(id, novoStatus) {
+        if (dbFuncional) {
+            await db.collection("agendamentos").doc(id).update({ status: novoStatus });
+        } else {
+            let ags = JSON.parse(localStorage.getItem('lm_agendamentos') || '[]');
+            ags = ags.map(a => a.id === id ? { ...a, status: novoStatus } : a);
+            localStorage.setItem('lm_agendamentos', JSON.stringify(ags));
+        }
     }
-};
+}; 

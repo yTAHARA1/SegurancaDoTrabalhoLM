@@ -3,8 +3,8 @@ lucide.createIcons();
 
 async function renderNoticias() {
     const noticiasGrid = document.getElementById('news-container');
-    if(!noticiasGrid) return;
-    
+    if (!noticiasGrid) return;
+
     // Fetch dynamically or fallback locally
     let newsList = await DBService.getNoticias();
     if (newsList.length === 0) {
@@ -14,7 +14,7 @@ async function renderNoticias() {
             { titulo: 'Treinamento de Brigada de Incêndio', resumo: 'Abrimos novas turmas corporativas para treinamento prático de combate a incêndio.', tag: 'Cursos', imagem: 'https://images.unsplash.com/photo-1599389914442-70b991316b25?auto=format&fit=crop&q=80', data: new Date().toISOString() }
         ];
     }
-    
+
     // Filter if search
     const search = document.getElementById('news-search')?.value.toLowerCase() || '';
     const filtered = newsList.filter(n => n.titulo.toLowerCase().includes(search) || n.resumo.toLowerCase().includes(search) || (n.tag && n.tag.toLowerCase().includes(search)));
@@ -35,7 +35,7 @@ document.getElementById('news-search')?.addEventListener('input', renderNoticias
 
 async function renderGaleria() {
     const galleryGrid = document.getElementById('gallery-container');
-    if(!galleryGrid) return;
+    if (!galleryGrid) return;
 
     let galleryItems = await DBService.getGaleria();
     if (galleryItems.length === 0) {
@@ -68,10 +68,10 @@ async function renderServicosVitrine() {
     // Fallback com os 4 serviços originais se o banco estiver vazio
     if (!servicos || servicos.length === 0) {
         servicos = [
-            { icone: 'file-text',      titulo: 'Documentação Obrigatória',  descricao: 'Elaboração técnica de PGR, PCMSO, LTCAT, laudos técnicos específicos e <strong>Regularização eSocial SST</strong>.' },
+            { icone: 'file-text', titulo: 'Documentação Obrigatória', descricao: 'Elaboração técnica de PGR, PCMSO, LTCAT, laudos técnicos específicos e <strong>Regularização eSocial SST</strong>.' },
             { icone: 'graduation-cap', titulo: 'Treinamentos (NRs) e SIPAT', descricao: 'Capacitação prática e teórica em <strong>NR-06, NR-12, NR-35</strong> (Trabalho em Altura), Espaço Confinado e SIPAT.' },
-            { icone: 'search',         titulo: 'Auditorias e Inspeções',     descricao: 'Vistorias minuciosas, identificar não conformidades e recomendar providências de forma preventiva.' },
-            { icone: 'headphones',     titulo: 'Consultoria Contínua',       descricao: 'Apoio na gestão contínua e estratégica da segurança do trabalho em tempo integral.' }
+            { icone: 'search', titulo: 'Auditorias e Inspeções', descricao: 'Vistorias minuciosas, identificar não conformidades e recomendar providências de forma preventiva.' },
+            { icone: 'headphones', titulo: 'Consultoria Contínua', descricao: 'Apoio na gestão contínua e estratégica da segurança do trabalho em tempo integral.' }
         ];
     }
 
@@ -141,7 +141,7 @@ navLinks.forEach(link => {
         e.preventDefault();
         const target = link.getAttribute('data-target');
         switchView(target);
-        
+
         // Also update URL hash without jump
         history.pushState(null, null, `#${target}`);
     });
@@ -168,7 +168,7 @@ function setupModal(triggerBtnId, modalId, closeBtnId) {
     if (triggerBtn && modal && closeBtn) {
         triggerBtn.addEventListener('click', () => modal.classList.add('active'));
         closeBtn.addEventListener('click', () => modal.classList.remove('active'));
-        
+
         // Close on outside click
         modal.addEventListener('click', (e) => {
             if (e.target === modal) modal.classList.remove('active');
@@ -197,7 +197,7 @@ document.getElementById('cadastroForm')?.addEventListener('submit', async (e) =>
     };
 
     const result = await DBService.salvarCliente(cliente);
-    
+
     if (result.success) {
         alert('Empresa cadastrada com sucesso! Nossa equipe validará seu acesso em breve.');
         document.getElementById('cadastroModal').classList.remove('active');
@@ -211,7 +211,7 @@ document.getElementById('cadastroForm')?.addEventListener('submit', async (e) =>
 
 document.getElementById('agendamentoForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
+
     const servicoSelect = document.getElementById('agendamento-servico');
     const servicoText = servicoSelect.options[servicoSelect.selectedIndex].text;
     const data = document.getElementById('agendamento-data').value;
@@ -235,17 +235,17 @@ document.getElementById('agendamentoForm')?.addEventListener('submit', async (e)
         clienteId: clienteId || null,
         clienteNome: clienteNome || 'Visitante/Não Logado'
     });
-    
+
     const codigoGerado = result.codigo || '---';
-    
+
     if (clienteId) renderAreaCliente();
-    
+
     // 2. Enviar para WhatsApp do Diretor
     let mensagem = `Olá! Gostaria de pré-agendar um serviço pela LM Segurança.\n\n`;
     mensagem += `*Código:* ${codigoGerado}\n`;
     mensagem += `*Serviço:* ${servicoText}\n`;
     mensagem += `*Data Preferencial:* ${dataFormatada}\n`;
-    if(obs) {
+    if (obs) {
         mensagem += `*Obs:* ${obs}`;
     }
 
@@ -261,18 +261,18 @@ document.getElementById('agendamentoForm')?.addEventListener('submit', async (e)
 
 document.getElementById('contactForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
-    
+
     const nome = document.getElementById('contato-nome')?.value || '';
     const email = document.getElementById('contato-email')?.value || '';
     const msg = document.getElementById('contato-msg')?.value || '';
 
     let mensagem = `Olá, meu nome é *${nome}*.\n`;
-    if(email) mensagem += `Meu e-mail para contato é: ${email}\n\n`;
+    if (email) mensagem += `Meu e-mail para contato é: ${email}\n\n`;
     mensagem += `*Mensagem:*\n${msg}`;
 
     const whatsappUrl = `https://wa.me/5518991526770?text=${encodeURIComponent(mensagem)}`;
     window.open(whatsappUrl, '_blank');
-    
+
     e.target.reset();
 });
 
@@ -286,7 +286,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     const senha = document.getElementById('login-senha').value;
 
     // Admin redirect check (Master fixo)
-    if (acesso.toLowerCase() === 'admin' && (senha === 'admin123' || senha === 'lmseguranca')) {
+    if (acesso.toLowerCase() === 'LMadmin' && (senha === 'senhaLM' || senha === 'lmseguranca')) {
         sessionStorage.setItem('adminAuth', 'true');
         window.location.href = 'admin.html';
         return;
@@ -303,7 +303,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     }
 
     const res = await DBService.loginCliente(acesso, senha);
-    if(res.success) {
+    if (res.success) {
         sessionStorage.setItem('lm_user', JSON.stringify(res.user));
         document.getElementById('loginModal').classList.remove('active');
         e.target.reset();
@@ -318,14 +318,14 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
 // === ESQUECI MINHA SENHA ===
 document.getElementById('btnEsqueciSenha')?.addEventListener('click', async () => {
     const acesso = document.getElementById('login-acesso').value.trim();
-    
+
     if (!acesso) {
         alert('Por favor, preencha o campo de CNPJ ou E-mail acima antes de clicar em "Esqueci minha senha".');
         return;
     }
 
     const res = await DBService.buscarClientePorAcesso(acesso);
-    
+
     if (res.success) {
         const cliente = res.cliente;
         let mensagem = `Olá LM Segurança! Estou solicitando a recuperação de senha da minha conta.\n\n`;
@@ -336,7 +336,7 @@ document.getElementById('btnEsqueciSenha')?.addEventListener('click', async () =
         mensagem += `Por favor, redefinam minha senha de acesso. Obrigado!`;
 
         alert('✅ Conta localizada!\n\nVocê será redirecionado ao WhatsApp para solicitar a redefinição de senha ao administrador.');
-        
+
         const whatsappUrl = `https://wa.me/5518991526770?text=${encodeURIComponent(mensagem)}`;
         window.open(whatsappUrl, '_blank');
     } else {
@@ -349,10 +349,10 @@ async function renderAreaCliente() {
     const userStr = sessionStorage.getItem('lm_user');
     if (!userStr) return;
     const user = JSON.parse(userStr);
-    
+
     const clienteNameEl = document.getElementById('cliente-nome-display');
-    if(clienteNameEl) clienteNameEl.innerText = `Bem-vindo, ${user.responsavel || user.razaoSocial}.`;
-    
+    if (clienteNameEl) clienteNameEl.innerText = `Bem-vindo, ${user.responsavel || user.razaoSocial}.`;
+
     const agendamentos = await DBService.getAgendamentosPorCliente(user.id);
     const tbody = document.getElementById('lista-meus-agendamentos');
     if (tbody) {
@@ -374,14 +374,14 @@ function checkLoginState() {
     const userStr = sessionStorage.getItem('lm_user');
     const authButtons = document.getElementById('auth-buttons');
     const userMenu = document.getElementById('user-menu');
-    
+
     if (userStr) {
-        if(authButtons) authButtons.style.display = 'none';
-        if(userMenu) userMenu.style.display = 'flex';
+        if (authButtons) authButtons.style.display = 'none';
+        if (userMenu) userMenu.style.display = 'flex';
         renderAreaCliente();
     } else {
-        if(authButtons) authButtons.style.display = 'flex';
-        if(userMenu) userMenu.style.display = 'none';
+        if (authButtons) authButtons.style.display = 'flex';
+        if (userMenu) userMenu.style.display = 'none';
     }
 }
 

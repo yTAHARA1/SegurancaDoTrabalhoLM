@@ -286,7 +286,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     const senha = document.getElementById('login-senha').value;
 
     // Admin redirect check (Master fixo)   
-    if (acesso.toLowerCase() === 'LMadmin' && (senha === 'senhaLM' || senha === 'lmseguranca')) {
+    if (acesso.toLowerCase() === 'adminlm' && (senha === 'senhalm' || senha === 'lmseguranca')) {
         sessionStorage.setItem('adminAuth', 'true');
         window.location.href = 'admin.html';
         return;
@@ -324,24 +324,32 @@ document.getElementById('btnEsqueciSenha')?.addEventListener('click', async () =
         return;
     }
 
+    const btn = document.getElementById('btnEsqueciSenha');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'Enviando...';
+    btn.style.pointerEvents = 'none';
+
     const res = await DBService.buscarClientePorAcesso(acesso);
 
     if (res.success) {
         const cliente = res.cliente;
-        let mensagem = `Olá LM Segurança! Estou solicitando a recuperação de senha da minha conta.\n\n`;
-        mensagem += `*Empresa:* ${cliente.razaoSocial}\n`;
-        mensagem += `*CNPJ:* ${cliente.cnpj}\n`;
-        mensagem += `*E-mail:* ${cliente.email}\n`;
-        mensagem += `*Responsável:* ${cliente.responsavel || 'N/A'}\n\n`;
-        mensagem += `Por favor, redefinam minha senha de acesso. Obrigado!`;
-
-        alert('✅ Conta localizada!\n\nVocê será redirecionado ao WhatsApp para solicitar a redefinição de senha ao administrador.');
-
-        const whatsappUrl = `https://wa.me/5518991526770?text=${encodeURIComponent(mensagem)}`;
-        window.open(whatsappUrl, '_blank');
+        const email = cliente.email;
+        
+        // Disparando E-mail pelo Firebase Auth
+        const resetRes = await DBService.enviarEmailRecuperacao(email);
+        
+        if (resetRes.local || resetRes.success) {
+            alert('✅ E-mail de recuperação enviado!\n\nVerifique a caixa de entrada (e spam) do e-mail: ' + email + '\nVocê receberá um e-mail noreply para cadastrar uma nova senha.');
+        } else {
+            console.error("Erro ao enviar email", resetRes.error);
+            alert('❌ Não foi possível enviar o e-mail no momento:\n' + (resetRes.error?.message || 'Tente novamente mais tarde.'));
+        }
     } else {
-        alert('❌ Nenhuma conta encontrada com este CNPJ ou E-mail.\nVerifique os dados e tente novamente.');
+        alert('❌ Nenhuma conta encontrada com este CNPJ ou E-mail.\nVerifique os dados digitados e tente novamente.');
     }
+
+    btn.innerHTML = originalText;
+    btn.style.pointerEvents = 'auto';
 });
 
 // Resumo e estado da sessão do cliente

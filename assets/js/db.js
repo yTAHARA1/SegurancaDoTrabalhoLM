@@ -38,9 +38,20 @@ const DBService = {
 
         if (dbFuncional) {
             try {
-                const docRef = await db.collection("clientes").add(clienteData);
-                return { success: true, id: docRef.id };
+                // 1. Criar Auth Profile no Firebase
+                const authUser = await firebase.auth().createUserWithEmailAndPassword(clienteData.email, clienteData.senha);
+                const uid = authUser.user.uid;
+                
+                // Remove a senha para não salvar no Firestore
+                const copiaCliente = { ...clienteData };
+                delete copiaCliente.senha;
+                
+                // 2. Salvar no Firestore com o UID do Auth
+                await db.collection("clientes").doc(uid).set(copiaCliente);
+                return { success: true, id: uid };
             } catch (error) {
+                // Traduz erros comuns de Auth
+                if(error.code === 'auth/email-already-in-use') error.message = "Este e-mail já está em uso.";
                 return { success: false, error };
             }
         } else {
@@ -56,16 +67,53 @@ const DBService = {
     async loginCliente(acesso, senha) {
         if (dbFuncional) {
             try {
-                // Checa por CNPJ ou Email
-                let snapshot = await db.collection("clientes").where("cnpj", "==", acesso).where("senha", "==", senha).get();
-                if (snapshot.empty) {
-                    snapshot = await db.collection("clientes").where("email", "==", acesso).where("senha", "==", senha).get();
+                let emailToLogin = acesso;
+                
+                // Se acessou por CNPJ, tem que achar o e-mail primeiro
+                if (!acesso.includes('@')) {
+                    const snap = await db.collection("clientes").where("cnpj", "==", acesso).get();
+                    if (!snap.empty) {
+                        emailToLogin = snap.docs[0].data().email;
+                    } else {
+                        return { success: false, error: { message: "CNPJ não encontrado." } };
+                    }
                 }
 
-                if (!snapshot.empty) {
-                    const doc = snapshot.docs[0];
-                    return { success: true, user: { id: doc.id, ...doc.data() } };
+                try {
+                    // Tenta o login com Auth Nativo
+                    const authRes = await firebase.auth().signInWithEmailAndPassword(emailToLogin, senha);
+                    
+                    // Puxar os dados do Firestore
+                    const userDoc = await db.collection("clientes").doc(authRes.user.uid).get();
+                    if (userDoc.exists) return { success: true, user: { id: userDoc.id, ...userDoc.data() } };
+                    
+                    // Se não bateu pelo UID (Migração), pega pelo e-mail
+                    const snapFallback = await db.collection("clientes").where("email", "==", emailToLogin).get();
+                    if (!snapFallback.empty) {
+                        const doc = snapFallback.docs[0];
+                        return { success: true, user: { id: doc.id, ...doc.data() } };
+                    }
+                } catch (authError) {
+                    // Fallback para MIGRAÇÃO de usuários antigos (salvos em plain-text sem Firebase Auth criado)
+                    const oldUserQuery = await db.collection("clientes").where("email", "==", emailToLogin).where("senha", "==", senha).get();
+                    if (!oldUserQuery.empty) {
+                        const oldDoc = oldUserQuery.docs[0];
+                        try {
+                            // Cria silenciosamente o Auth dele
+                            const freshAuth = await firebase.auth().createUserWithEmailAndPassword(emailToLogin, senha);
+                            // Cria com ID novo UID ou mantém documentação original? Manter o documento pode ser complexo mudar ID. 
+                            // Excluir senha do firestore!
+                            await db.collection("clientes").doc(oldDoc.id).update({
+                                senha: firebase.firestore.FieldValue.delete()
+                            });
+                            return { success: true, user: { id: oldDoc.id, ...oldDoc.data() } };
+                        } catch (e) {
+                           return { success: false, error: e };
+                        }
+                    }
+                    return { success: false, error: authError };
                 }
+
                 return { success: false };
             } catch (error) {
                 return { success: false, error };
@@ -75,6 +123,21 @@ const DBService = {
             const user = clientes.find(c => (c.cnpj === acesso || c.email === acesso) && c.senha === senha);
             if (user) return { success: true, user };
             return { success: false };
+        }
+    },
+
+    // === ENVIAR EMAIL DE RECUPERAÇÃO ===
+    async enviarEmailRecuperacao(email) {
+        if (dbFuncional) {
+            try {
+                 await firebase.auth().sendPasswordResetEmail(email);
+                 return { success: true };
+            } catch (error) {
+                if(error.code === 'auth/user-not-found') error.message = "E-mail não está cadastrado em nosso sistema de Auth. Faça seu primeiro login para ativá-lo.";
+                return { success: false, error };
+            }
+        } else {
+            return { success: true, local: true };
         }
     },
 
@@ -331,10 +394,18 @@ const DBService = {
     },
     async updateAgendamentoStatus(id, novoStatus) {
         if (dbFuncional) {
-            await db.collection("agendamentos").doc(id).update({ status: novoStatus });
+            if (novoStatus === 'Cancelado') {
+                await db.collection("agendamentos").doc(id).delete();
+            } else {
+                await db.collection("agendamentos").doc(id).update({ status: novoStatus });
+            }
         } else {
             let ags = JSON.parse(localStorage.getItem('lm_agendamentos') || '[]');
-            ags = ags.map(a => a.id === id ? { ...a, status: novoStatus } : a);
+            if (novoStatus === 'Cancelado') {
+                ags = ags.filter(a => a.id !== id);
+            } else {
+                ags = ags.map(a => a.id === id ? { ...a, status: novoStatus } : a);
+            }
             localStorage.setItem('lm_agendamentos', JSON.stringify(ags));
         }
     },

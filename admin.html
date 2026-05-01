@@ -141,6 +141,24 @@
         <!-- Agendamentos Tab -->
         <div id="tab-agendamentos" class="tab-content">
             <h2>Solicitações de Serviço</h2><br>
+            
+            <h3>Pendentes e em Andamento</h3>
+            <div style="overflow-x:auto; margin-bottom: 2rem;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Serviço Solicitado</th>
+                            <th>Data Pretendida</th>
+                            <th>Cliente</th>
+                            <th>Observações</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-agendamentos-ativos"></tbody>
+                </table>
+            </div>
+
+            <h3>Concluídos</h3>
             <div style="overflow-x:auto;">
                 <table class="data-table">
                     <thead>
@@ -152,7 +170,7 @@
                             <th>Status</th>
                         </tr>
                     </thead>
-                    <tbody id="lista-agendamentos"></tbody>
+                    <tbody id="lista-agendamentos-concluidos"></tbody>
                 </table>
             </div>
         </div>
@@ -268,6 +286,7 @@
 
     <!-- Firebase e Lógica -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
     <script src="assets/js/db.js"></script>
     
@@ -319,10 +338,9 @@
                 </tr>`;
             }).join('') || `<tr><td colspan="6">Vazio</td></tr>`;
 
-            // Agendamentos com status e cliente
-            document.getElementById('lista-agendamentos').innerHTML = agendamentos.map(a => {
+            // Agendamentos divididos por status
+            const renderAgendamentoRow = a => {
                 const clienteNome = a.clienteNome || (clientes.find(c => c.id === a.clienteId)?.razaoSocial) || 'Visitante';
-                const statusClass = (a.status || 'Pendente').replace(' ', '-');
                 return `
                 <tr>
                     <td><strong>${a.servico}</strong></td>
@@ -338,7 +356,13 @@
                         </select>
                     </td>
                 </tr>`;
-            }).join('') || `<tr><td colspan="5">Vazio</td></tr>`;
+            };
+
+            const agendamentosAtivos = agendamentos.filter(a => a.status === 'Pendente' || a.status === 'Em Andamento' || !a.status);
+            const agendamentosConcluidos = agendamentos.filter(a => a.status === 'Concluído');
+
+            document.getElementById('lista-agendamentos-ativos').innerHTML = agendamentosAtivos.map(renderAgendamentoRow).join('') || `<tr><td colspan="5">Nenhum serviço pendente.</td></tr>`;
+            document.getElementById('lista-agendamentos-concluidos').innerHTML = agendamentosConcluidos.map(renderAgendamentoRow).join('') || `<tr><td colspan="5">Nenhum serviço concluído.</td></tr>`;
 
             // Notícias
             const noticias = await DBService.getNoticias();
@@ -444,7 +468,17 @@
         }
 
         async function mudarStatusAgendamento(id, novoStatus) {
-            await DBService.updateAgendamentoStatus(id, novoStatus);
+            if (novoStatus === 'Cancelado') {
+                if(confirm('Tem certeza que deseja marcar como Cancelado? Este agendamento será excluído permanentemente.')) {
+                    await DBService.updateAgendamentoStatus(id, novoStatus);
+                    await carregarDados();
+                } else {
+                    await carregarDados(); // Reverte visualmente
+                }
+            } else {
+                await DBService.updateAgendamentoStatus(id, novoStatus);
+                await carregarDados();
+            }
         }
 
         async function deletarNoticia(id) {

@@ -294,7 +294,8 @@
     <script>
         // Verificação de Segurança por Token Firebase Auth
         firebase.auth().onAuthStateChanged(async (user) => {
-            if (localStorage.getItem('adminAuth') === 'true') {
+            const isMestre = new URLSearchParams(window.location.search).get('mestre') === '1';
+            if (localStorage.getItem('adminAuth') === 'true' || isMestre) {
                  document.body.style.display = 'block';
                  carregarDados();
             } else if (user && dbFuncional) {

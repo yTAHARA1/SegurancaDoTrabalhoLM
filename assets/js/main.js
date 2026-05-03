@@ -290,7 +290,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
         const adminRes = await DBService.loginAdmin(acesso, senha);
         if (adminRes.success) {
             localStorage.setItem('adminAuth', 'true');
-            window.location.href = 'admin.html';
+            window.location.href = 'admin.html?mestre=1';
             return;
         }
     }

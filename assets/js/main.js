@@ -181,6 +181,11 @@ function switchView(targetId) {
 
     // Close mobile menu if open
     navLinksContainer.classList.remove('show');
+
+    // Se mudar para feedbacks, recarrega para mostrar novos aprovados
+    if (targetId === 'feedbacks') {
+        renderFeedbacks();
+    }
 }
 
 navLinks.forEach(link => {

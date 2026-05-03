@@ -549,8 +549,16 @@ const DBService = {
     },
     async getFeedbacksPublic() {
         if (dbFuncional) {
-            const snap = await db.collection("feedbacks").where("status", "==", "Aprovado").orderBy("data", "desc").get();
-            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            try {
+                // Removemos o orderBy no query para evitar erro de Index no Firebase
+                const snap = await db.collection("feedbacks").where("status", "==", "Aprovado").get();
+                const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Ordenamos na memória
+                return docs.sort((a, b) => new Date(b.data) - new Date(a.data));
+            } catch (e) {
+                console.error("Erro ao buscar feedbacks:", e);
+                return [];
+            }
         }
         const docs = JSON.parse(localStorage.getItem('lm_feedbacks') || '[]');
         return docs.filter(f => f.status === 'Aprovado').sort((a, b) => new Date(b.data) - new Date(a.data));

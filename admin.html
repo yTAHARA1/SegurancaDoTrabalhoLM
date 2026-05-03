@@ -294,20 +294,20 @@
     <script>
         // Verificação de Segurança por Token Firebase Auth
         firebase.auth().onAuthStateChanged(async (user) => {
-            if (user && dbFuncional) {
+            if (sessionStorage.getItem('adminAuth') === 'true') {
+                 document.body.style.display = 'block';
+                 carregarDados();
+            } else if (user && dbFuncional) {
                 // Checa se é realmente admin no firebase
                 const adminDoc = await db.collection("admins").doc(user.uid).get();
                 if (adminDoc.exists) {
                     document.body.style.display = 'block';
                     carregarDados();
                 } else {
-                    alert('Este usuário de e-mail não tem permissões administrativas.');
+                    await CustomUI.alert('Este usuário de e-mail não tem permissões administrativas.', 'Acesso Negado');
                     firebase.auth().signOut();
                     window.location.href = 'index.html';
                 }
-            } else if (!dbFuncional && sessionStorage.getItem('adminAuth') === 'true') {
-                 document.body.style.display = 'block';
-                 carregarDados();
             } else {
                 window.location.href = 'index.html';
             }

@@ -289,6 +289,7 @@
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th>Ticket</th>
                             <th>Serviço Solicitado</th>
                             <th>Data Pretendida</th>
                             <th>Cliente</th>
@@ -305,6 +306,7 @@
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th>Ticket</th>
                             <th>Serviço Solicitado</th>
                             <th>Data Pretendida</th>
                             <th>Cliente</th>
@@ -521,6 +523,7 @@
                 const clienteNome = a.clienteNome || (clientes.find(c => c.id === a.clienteId)?.razaoSocial) || 'Visitante';
                 return `
                 <tr>
+                    <td><span style="font-family: monospace; background: var(--c-primary-light); color: var(--c-primary); padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700;">${a.codigo || '---'}</span></td>
                     <td><strong>${a.servico}</strong></td>
                     <td>${a.dataAgendamento}</td>
                     <td style="max-width:150px; font-size:0.85rem; color:gray;">${clienteNome}</td>

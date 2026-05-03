@@ -217,7 +217,7 @@
             <h2>Criar Novo Administrador</h2>
             <form class="form-grid" id="formAdmin">
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
-                    <div class="form-group"><label>Nome de Usuário</label><input type="text" id="admin-user" required></div>
+                    <div class="form-group"><label>E-mail de Acesso</label><input type="email" id="admin-email" required></div>
                     <div class="form-group"><label>Senha Segura</label><input type="password" id="admin-pass" required></div>
                 </div>
                 <button type="submit" class="btn btn-primary">Salvar Conta Admin</button>
@@ -225,7 +225,7 @@
             <h3>Administradores do Sistema</h3>
             <div style="overflow-x:auto; margin-top:1rem;">
                 <table class="data-table">
-                    <thead><tr><th>Usuário de Acesso</th><th>Data de Criação</th><th>Ação</th></tr></thead>
+                    <thead><tr><th>Login de Acesso</th><th>Data de Criação</th><th>Ação</th></tr></thead>
                     <tbody id="lista-admins"></tbody>
                 </table>
             </div>
@@ -291,12 +291,26 @@
     <script src="assets/js/db.js"></script>
     
     <script>
-        // Verificação de Segurança por Sessão de Admin
-        if (sessionStorage.getItem('adminAuth') === 'true') {
-            document.body.style.display = 'block';
-        } else {
-            window.location.href = 'index.html';
-        }
+        // Verificação de Segurança por Token Firebase Auth
+        firebase.auth().onAuthStateChanged(async (user) => {
+            if (user && dbFuncional) {
+                // Checa se é realmente admin no firebase
+                const adminDoc = await db.collection("admins").doc(user.uid).get();
+                if (adminDoc.exists) {
+                    document.body.style.display = 'block';
+                    carregarDados();
+                } else {
+                    alert('Este usuário de e-mail não tem permissões administrativas.');
+                    firebase.auth().signOut();
+                    window.location.href = 'index.html';
+                }
+            } else if (!dbFuncional && sessionStorage.getItem('adminAuth') === 'true') {
+                 document.body.style.display = 'block';
+                 carregarDados();
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
 
         lucide.createIcons();
 
@@ -387,7 +401,7 @@
             const admins = await DBService.getAdmins();
             document.getElementById('lista-admins').innerHTML = admins.map(a => `
                 <tr>
-                    <td>${a.usuario}</td>
+                    <td>${a.email || a.usuario || 'N/A'}</td>
                     <td>${a.dataCriacao ? new Date(a.dataCriacao).toLocaleDateString() : 'N/A'}</td>
                     <td><button onclick="deletarAdmin('${a.id}')" style="color:red; cursor:pointer; background:none; border:none;">Remover</button></td>
                 </tr>

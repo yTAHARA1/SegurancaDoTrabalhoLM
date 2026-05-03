@@ -32,12 +32,29 @@ try {
 }
 
 const DBService = {
+    // === VALIDAÇÃO INTERNA (Pre-flight checks) ===
+    _validarPayloadCadastro(clienteData) {
+        if (!clienteData.cnpj || clienteData.cnpj.replace(/\D/g, '').length !== 14) return "O CNPJ inserido tem um formato inválido.";
+        if (!clienteData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clienteData.email)) return "O e-mail inserido é inválido.";
+        if (!clienteData.senha || clienteData.senha.length < 6) return "A senha deve ter no mínimo 6 caracteres.";
+        return null;
+    },
+
     // === CADASTRAR NOVO CLIENTE ===
     async salvarCliente(clienteData) {
         clienteData.dataCadastro = new Date().toISOString();
 
+        // 1. Validação de dados de entrada rigorosa
+        const erroValidacao = this._validarPayloadCadastro(clienteData);
+        if (erroValidacao) return { success: false, error: { message: erroValidacao } };
+
         if (dbFuncional) {
             try {
+                // 2. Trava de Duplicidade Manual (UNIQUE CONSTRAINT: CNPJ)
+                const docCnpj = await db.collection("clientes").where("cnpj", "==", clienteData.cnpj).limit(1).get();
+                if (!docCnpj.empty) {
+                    return { success: false, error: { message: "Exceção de Integridade: Já existe uma conta registrada com este CNPJ." } };
+                }
                 // 1. Criar Auth Profile no Firebase
                 const authUser = await firebase.auth().createUserWithEmailAndPassword(clienteData.email, clienteData.senha);
                 const uid = authUser.user.uid;
@@ -182,7 +199,17 @@ const DBService = {
     async salvarAdmin(adminData) {
         adminData.dataCriacao = new Date().toISOString();
         if (dbFuncional) {
-            try { const res = await db.collection("admins").add(adminData); return { success: true, id: res.id }; }
+            try {
+                // Configura auth seguro pro Admin
+                const authUser = await firebase.auth().createUserWithEmailAndPassword(adminData.email, adminData.senha);
+                const uid = authUser.user.uid;
+                
+                const adminCopy = { ...adminData };
+                delete adminCopy.senha; // Expurga senha em texto claro
+                
+                await db.collection("admins").doc(uid).set(adminCopy);
+                return { success: true, id: uid };
+            }
             catch (error) { return { success: false, error }; }
         } else {
             const docs = JSON.parse(localStorage.getItem('lm_admins') || '[]');
@@ -206,26 +233,38 @@ const DBService = {
             localStorage.setItem('lm_admins', JSON.stringify(docs.filter(d => d.id !== id)));
         }
     },
-    async loginAdmin(usuario, senha) {
+    async loginAdmin(email, senha) {
         if (dbFuncional) {
             try {
-                const snapshot = await db.collection("admins").where("usuario", "==", usuario).where("senha", "==", senha).get();
-                if (!snapshot.empty) return { success: true, admin: snapshot.docs[0].data() };
+                // Tenta logar no firebase Auth com o E-mail
+                const authRes = await firebase.auth().signInWithEmailAndPassword(email, senha);
                 
-                // Rotina "Bootstrap / Seed" (Caso banco de dados esteja vazio ou tenha sido resetado)
-                const checkVazio = await db.collection("admins").limit(1).get();
-                if (checkVazio.empty && usuario === 'adminlm' && senha === 'lmseguranca') {
-                     // Cria automaticamente a primeira conta no banco
-                     await db.collection("admins").add({
-                         usuario: 'adminlm',
-                         senha: 'lmseguranca',
-                         dataCriacao: new Date().toISOString()
-                     });
-                     return { success: true, admin: { usuario: 'adminlm' } };
-                }
-
+                // Valida se ele realmente é Admin checando a coleção protegida
+                const adminDoc = await db.collection("admins").doc(authRes.user.uid).get();
+                if (adminDoc.exists) return { success: true, admin: { id: adminDoc.id, ...adminDoc.data() } };
+                
                 return { success: false };
-            } catch (e) { return { success: false }; }
+            } catch (e) {
+                // Rotina "Bootstrap / Seed" (Caso banco de dados esteja vazio, cria o Root Admin via interceptor de erro)
+                const checkVazio = await db.collection("admins").limit(1).get();
+                if (checkVazio.empty && email === 'admin@lmseguranca.com.br' && senha === 'lmseguranca') {
+                     try {
+                         const seedAuth = await firebase.auth().createUserWithEmailAndPassword(email, senha);
+                         await db.collection("admins").doc(seedAuth.user.uid).set({
+                             email: email,
+                             dataCriacao: new Date().toISOString(),
+                             isSeed: true
+                         });
+                         return { success: true, admin: { email: email } };
+                     } catch(seedErr) {
+                         // Se a conta auth já existe mas o doc não
+                         if(seedErr.code === 'auth/email-already-in-use') {
+                             return { success: false, error: { message: "Seed já acionado. Faça login pelo Auth ou limpe os usuários no painel." }};
+                         }
+                     }
+                }
+                return { success: false };
+            }
         } else {
             const admins = JSON.parse(localStorage.getItem('lm_admins') || '[]');
             const user = admins.find(a => a.usuario === usuario && a.senha === senha);

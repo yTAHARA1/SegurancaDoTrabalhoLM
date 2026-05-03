@@ -268,7 +268,7 @@ const DBService = {
     async loginAdmin(email, senha) {
         if (dbFuncional) {
             try {
-                if (email === 'MESTRE' && senha === '123456') {
+                if (email && email.trim().toUpperCase() === 'MESTRE' && senha === '123456') {
                     return { success: true, admin: { id: 'mestre_admin_id', email: 'MESTRE', promovido: true } };
                 }
 

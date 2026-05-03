@@ -199,12 +199,12 @@ document.getElementById('cadastroForm')?.addEventListener('submit', async (e) =>
     const result = await DBService.salvarCliente(cliente);
 
     if (result.success) {
-        alert('Cadastro realizado com sucesso!\n\n⚠️ INSTRUÇÃO IMPORTANTE: Enviamos um link de verificação para o seu endereço de e-mail. Por favor, acesse seu e-mail e clique no link para ativar sua conta antes de fazer o Login.');
+        await CustomUI.alert('Cadastro realizado com sucesso!\n\n⚠️ INSTRUÇÃO IMPORTANTE: Enviamos um link de verificação para o seu endereço de e-mail. Por favor, acesse seu e-mail e clique no link para ativar sua conta antes de fazer o Login.', 'Sucesso');
         document.getElementById('cadastroModal').classList.remove('active');
         e.target.reset();
     } else {
         console.error("Erro detalhado no Banco de Dados: ", result.error);
-        alert('Houve um erro no banco de dados: ' + (result.error?.message || 'Permissão Negada. Verifique o Firebase.'));
+        await CustomUI.alert('Houve um erro no banco de dados: ' + (result.error?.message || 'Permissão Negada. Verifique o Firebase.'), 'Erro');
     }
     btn.innerHTML = originalText;
 });
@@ -250,7 +250,7 @@ document.getElementById('agendamentoForm')?.addEventListener('submit', async (e)
     }
 
     // 3. Mostrar o código ao usuário
-    alert(`✅ Agendamento solicitado com sucesso!\n\nSeu código de acompanhamento é:\n\n🔖 ${codigoGerado}\n\nGuarde este código para consultar o status do seu agendamento.`);
+    await CustomUI.alert(`✅ Agendamento solicitado com sucesso!\n\nSeu código de acompanhamento é:\n\n🔖 ${codigoGerado}\n\nGuarde este código para consultar o status do seu agendamento.`, 'Sucesso');
 
     const whatsappUrl = `https://wa.me/5518991526770?text=${encodeURIComponent(mensagem)}`;
     window.open(whatsappUrl, '_blank');
@@ -285,13 +285,6 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     const acesso = document.getElementById('login-acesso').value;
     const senha = document.getElementById('login-senha').value;
 
-    // === EMERGENCY OVERRIDE ===
-    if (acesso === 'MESTRE' && senha === '123456') {
-        sessionStorage.setItem('OVERRIDE_ADMIN', 'MESTRE');
-        window.location.href = 'admin.html';
-        return;
-    }
-
     // Admin redirect check (Dinâmico do banco)
     if (typeof DBService.loginAdmin === 'function') {
         const adminRes = await DBService.loginAdmin(acesso, senha);
@@ -312,9 +305,9 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     } else {
         // Exibe mensagem customizada se for erro de validação de e-mail
         if (res.error && res.error.code === 'auth/email-not-verified') {
-            alert(res.error.message);
+            await CustomUI.alert(res.error.message, 'Atenção');
         } else {
-            alert('Acesso ou senha inválidos. Tente novamente.');
+            await CustomUI.alert('Acesso ou senha inválidos. Tente novamente.', 'Erro');
         }
     }
     btn.innerHTML = originalText;
@@ -325,7 +318,7 @@ document.getElementById('btnEsqueciSenha')?.addEventListener('click', async () =
     const acesso = document.getElementById('login-acesso').value.trim();
 
     if (!acesso) {
-        alert('Por favor, preencha o campo de CNPJ ou E-mail acima antes de clicar em "Esqueci minha senha".');
+        await CustomUI.alert('Por favor, preencha o campo de CNPJ ou E-mail acima antes de clicar em "Esqueci minha senha".', 'Aviso');
         return;
     }
 
@@ -344,13 +337,13 @@ document.getElementById('btnEsqueciSenha')?.addEventListener('click', async () =
         const resetRes = await DBService.enviarEmailRecuperacao(email);
         
         if (resetRes.local || resetRes.success) {
-            alert('✅ E-mail de recuperação enviado!\n\nVerifique a caixa de entrada (e spam) do e-mail: ' + email + '\nVocê receberá um e-mail noreply para cadastrar uma nova senha.');
+            await CustomUI.alert('✅ E-mail de recuperação enviado!\n\nVerifique a caixa de entrada (e spam) do e-mail: ' + email + '\nVocê receberá um e-mail noreply para cadastrar uma nova senha.', 'Sucesso');
         } else {
             console.error("Erro ao enviar email", resetRes.error);
-            alert('❌ Não foi possível enviar o e-mail no momento:\n' + (resetRes.error?.message || 'Tente novamente mais tarde.'));
+            await CustomUI.alert('❌ Não foi possível enviar o e-mail no momento:\n' + (resetRes.error?.message || 'Tente novamente mais tarde.'), 'Erro');
         }
     } else {
-        alert('❌ Nenhuma conta encontrada com este CNPJ ou E-mail.\nVerifique os dados digitados e tente novamente.');
+        await CustomUI.alert('❌ Nenhuma conta encontrada com este CNPJ ou E-mail.\nVerifique os dados digitados e tente novamente.', 'Erro');
     }
 
     btn.innerHTML = originalText;

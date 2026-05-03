@@ -233,6 +233,38 @@ const DBService = {
             localStorage.setItem('lm_admins', JSON.stringify(docs.filter(d => d.id !== id)));
         }
     },
+    async promoverAdmin(clienteId) {
+        if (dbFuncional) {
+            try {
+                const doc = await db.collection("clientes").doc(clienteId).get();
+                if (!doc.exists) return { success: false, error: { message: "Cliente não encontrado." }};
+                const dados = doc.data();
+                
+                // Copy their access into the admins collection
+                await db.collection("admins").doc(clienteId).set({
+                    email: dados.email,
+                    usuario: dados.razaoSocial || dados.email,
+                    dataCriacao: new Date().toISOString(),
+                    promovido: true
+                });
+                return { success: true };
+            } catch (error) { return { success: false, error }; }
+        } else {
+            const clientes = JSON.parse(localStorage.getItem('lm_clientes') || '[]');
+            const cliente = clientes.find(c => c.id === clienteId);
+            if (!cliente) return { success: false };
+            
+            const admins = JSON.parse(localStorage.getItem('lm_admins') || '[]');
+            admins.push({
+                id: cliente.id,
+                email: cliente.email,
+                usuario: cliente.razaoSocial,
+                dataCriacao: new Date().toISOString()
+            });
+            localStorage.setItem('lm_admins', JSON.stringify(admins));
+            return { success: true };
+        }
+    },
     async loginAdmin(email, senha) {
         if (dbFuncional) {
             try {

@@ -289,33 +289,29 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
     <script src="assets/js/db.js"></script>
+    <script src="assets/js/ui.js"></script>
     
     <script>
         // Verificação de Segurança por Token Firebase Auth
-        if (sessionStorage.getItem('OVERRIDE_ADMIN') === 'MESTRE') {
-            document.body.style.display = 'block';
-            carregarDados();
-        } else {
-            firebase.auth().onAuthStateChanged(async (user) => {
-                if (user && dbFuncional) {
-                    // Checa se é realmente admin no firebase
-                    const adminDoc = await db.collection("admins").doc(user.uid).get();
-                    if (adminDoc.exists) {
-                        document.body.style.display = 'block';
-                        carregarDados();
-                    } else {
-                        alert('Este usuário de e-mail não tem permissões administrativas.');
-                        firebase.auth().signOut();
-                        window.location.href = 'index.html';
-                    }
-                } else if (!dbFuncional && sessionStorage.getItem('adminAuth') === 'true') {
-                     document.body.style.display = 'block';
-                     carregarDados();
+        firebase.auth().onAuthStateChanged(async (user) => {
+            if (user && dbFuncional) {
+                // Checa se é realmente admin no firebase
+                const adminDoc = await db.collection("admins").doc(user.uid).get();
+                if (adminDoc.exists) {
+                    document.body.style.display = 'block';
+                    carregarDados();
                 } else {
+                    alert('Este usuário de e-mail não tem permissões administrativas.');
+                    firebase.auth().signOut();
                     window.location.href = 'index.html';
                 }
-            });
-        }
+            } else if (!dbFuncional && sessionStorage.getItem('adminAuth') === 'true') {
+                 document.body.style.display = 'block';
+                 carregarDados();
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
 
         lucide.createIcons();
 
@@ -352,6 +348,7 @@
                     <td style="display:flex; gap:0.4rem; flex-wrap:wrap;">
                         <button onclick="verHistorico('${c.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem;">Histórico</button>
                         <button onclick="mudarSenha('${c.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem;">Senha</button>
+                        <button onclick="promoverClienteAdmin('${c.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem; background: var(--c-primary-light); color: var(--c-primary); border-color: var(--c-primary-light);">Tornar Admin</button>
                         <button onclick="deletarCliente('${c.id}')" style="color:red; cursor:pointer; background:none; border:1px solid red; border-radius:6px; padding:0.3rem 0.6rem; font-size:0.8rem;">Remover</button>
                     </td>
                 </tr>`;
@@ -434,20 +431,33 @@
             lucide.createIcons();
         }
 
-        // AÇÕES DO ADMIN
         async function mudarSenha(clienteId) {
-            const novaSenha = prompt('Digite a nova senha para o cliente (ela passará a valer na mesma hora):');
+            const novaSenha = await CustomUI.prompt('Digite a nova senha para o cliente (ela passará a valer na mesma hora):', '', 'Mudar Senha');
             if (novaSenha && novaSenha.length >= 6) {
                 await DBService.alterarSenhaCliente(clienteId, novaSenha);
-                alert('Senha alterada com sucesso! O cliente já pode logar com a nova senha.');
-            } else if (novaSenha) { alert('A senha deve ter pelo menos 6 caracteres.'); }
+                await CustomUI.alert('Senha alterada com sucesso! O cliente já pode logar com a nova senha.', 'Sucesso');
+            } else if (novaSenha) { await CustomUI.alert('A senha deve ter pelo menos 6 caracteres.', 'Aviso'); }
+        }
+
+        async function promoverClienteAdmin(clienteId) {
+            const isConfirmed = await CustomUI.confirm('Ao promover este cliente, ele ganhará acesso total a este painel administrativo com seu e-mail e senha atuais. Continuar?');
+            if(isConfirmed) {
+                const res = await DBService.promoverAdmin(clienteId);
+                if (res.success) {
+                    await CustomUI.alert('Usuário promovido a Administrador com sucesso!', 'Sucesso');
+                    carregarDados();
+                } else {
+                    await CustomUI.alert('Erro ao promover usuário: ' + (res.error?.message || 'Desconhecido.'), 'Erro');
+                }
+            }
         }
 
         async function deletarCliente(id) {
-            if(confirm('Tem certeza que deseja REMOVER permanentemente este cliente? Esta ação não pode ser desfeita.')) {
+            const isConfirmed = await CustomUI.confirm('Tem certeza que deseja REMOVER permanentemente este cliente? Esta ação não pode ser desfeita.', 'Remover Cliente');
+            if(isConfirmed) {
                 await DBService.deleteCliente(id);
                 await carregarDados();
-                alert('Cliente removido com sucesso.');
+                await CustomUI.alert('Cliente removido com sucesso.', 'Sucesso');
             }
         }
 
@@ -488,7 +498,8 @@
 
         async function mudarStatusAgendamento(id, novoStatus) {
             if (novoStatus === 'Cancelado') {
-                if(confirm('Tem certeza que deseja marcar como Cancelado? Este agendamento será excluído permanentemente.')) {
+                const isConfirmed = await CustomUI.confirm('Tem certeza que deseja marcar como Cancelado? Este agendamento será excluído permanentemente.', 'Cancelar Agendamento');
+                if(isConfirmed) {
                     await DBService.updateAgendamentoStatus(id, novoStatus);
                     await carregarDados();
                 } else {
@@ -501,11 +512,13 @@
         }
 
         async function deletarNoticia(id) {
-            if(confirm('Apagar esta notícia do Blog?')) { await DBService.deleteNoticia(id); carregarDados(); }
+            const isConfirmed = await CustomUI.confirm('Apagar esta notícia do Blog?', 'Remover Notícia');
+            if(isConfirmed) { await DBService.deleteNoticia(id); carregarDados(); }
         }
         
         async function deletarGaleria(id) {
-            if(confirm('Apagar esta imagem da Galeria?')) { await DBService.deleteGaleria(id); carregarDados(); }
+            const isConfirmed = await CustomUI.confirm('Apagar esta imagem da Galeria?', 'Remover Imagem');
+            if(isConfirmed) { await DBService.deleteGaleria(id); carregarDados(); }
         }
 
         document.getElementById('formNoticia').addEventListener('submit', async (e) => {
@@ -518,7 +531,7 @@
             });
             e.target.reset();
             carregarDados();
-            alert('Notícia publicada no site!');
+            await CustomUI.alert('Notícia publicada no site!', 'Sucesso');
         });
 
         document.getElementById('formGaleria').addEventListener('submit', async (e) => {
@@ -526,18 +539,20 @@
             await DBService.addGaleria(document.getElementById('gal-img').value);
             e.target.reset();
             carregarDados();
-            alert('Foto publicada no site!');
+            await CustomUI.alert('Foto publicada no site!', 'Sucesso');
         });
 
         async function deletarAdmin(id) {
-            if(confirm('Apagar esta conta de administrador? Ele perderá o acesso ao painel imediatamente.')) {
+            const isConfirmed = await CustomUI.confirm('Apagar esta conta de administrador? Ele perderá o acesso ao painel imediatamente.', 'Remover Administrador');
+            if(isConfirmed) {
                 await DBService.deleteAdmin(id);
                 carregarDados();
             }
         }
 
         async function deletarServico(id) {
-            if(confirm('Tem certeza que deseja apagar este serviço das opções de agendamento?')) {
+            const isConfirmed = await CustomUI.confirm('Tem certeza que deseja apagar este serviço das opções de agendamento?', 'Remover Serviço');
+            if(isConfirmed) {
                 await DBService.deleteServico(id);
                 carregarDados();
             }
@@ -551,7 +566,7 @@
             });
             e.target.reset();
             carregarDados();
-            alert('Novo Administrador criado com sucesso!');
+            await CustomUI.alert('Novo Administrador criado com sucesso!', 'Sucesso');
         });
 
         document.getElementById('formServico')?.addEventListener('submit', async (e) => {
@@ -559,11 +574,12 @@
             await DBService.addServico(document.getElementById('serv-nome').value);
             e.target.reset();
             carregarDados();
-            alert('Serviço adicionado com sucesso!');
+            await CustomUI.alert('Serviço adicionado com sucesso!', 'Sucesso');
         });
 
         async function deletarVitrine(id) {
-            if(confirm('Remover este card da página de Serviços do site?')) {
+            const isConfirmed = await CustomUI.confirm('Remover este card da página de Serviços do site?', 'Remover Serviço');
+            if(isConfirmed) {
                 await DBService.deleteServicoVitrine(id);
                 await carregarDados();
             }
@@ -578,7 +594,7 @@
             });
             e.target.reset();
             await carregarDados();
-            alert('Card publicado na página de Serviços!');
+            await CustomUI.alert('Card publicado na página de Serviços!', 'Sucesso');
         });
 
         window.addEventListener('DOMContentLoaded', carregarDados);

@@ -132,7 +132,20 @@
             overflow: hidden;
         }
 
-        .data-table th { background-color: rgba(248, 249, 250, 0.5); }
+        .data-table th, .data-table td {
+            text-align: left;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            line-height: 1.5;
+        }
+
+        .data-table th { 
+            background-color: rgba(248, 249, 250, 0.6); 
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--c-gray-600);
+        }
         
         h2, h3 { font-family: var(--font-display); color: var(--c-accent); margin-bottom: 1rem; }
 
@@ -486,7 +499,7 @@
                     <td>${c.email}</td>
                     <td>${c.telefone}</td>
                     <td>${badge}</td>
-                    <td style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                    <td style="display:flex; gap:0.8rem; flex-wrap:wrap; padding: 1.25rem;">
                         <button onclick="verHistorico('${c.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem;">Histórico</button>
                         <button onclick="mudarSenha('${c.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem;">Senha</button>
                         <button onclick="promoverClienteAdmin('${c.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem; background: var(--c-primary-light); color: var(--c-primary); border-color: var(--c-primary-light);">Tornar Admin</button>
@@ -585,7 +598,7 @@
                     <td>
                         <span class="status-badge status-${f.status || 'Pendente'}">${f.status || 'Pendente'}</span>
                     </td>
-                    <td style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <td style="display:flex; gap:0.8rem; flex-wrap:wrap; padding: 1.25rem;">
                         ${!isAprovado ? `<button onclick="aprovarFeedback('${f.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem; background:#d1fae5; color:#065f46; border-color:#d1fae5;">Aprovar</button>` : ''}
                         <button onclick="comentarFeedback('${f.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem;">${f.resposta ? 'Editar Resposta' : 'Responder'}</button>
                         <button onclick="deletarFeedback('${f.id}')" style="color:red; cursor:pointer; background:none; border:1px solid red; border-radius:6px; padding:0.3rem 0.6rem; font-size:0.8rem;">Remover</button>

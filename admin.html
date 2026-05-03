@@ -220,6 +220,17 @@
         <a href="index.html" class="btn btn-outline" style="padding: 0.6rem 1.2rem; border-color: var(--c-gray-200); color: var(--c-gray-600);">Sair</a>
     </header>
 
+    <!-- Modal Gerenciar Cliente -->
+    <div class="hist-modal-overlay" id="gerenciarModalOverlay">
+        <div class="hist-modal" style="max-width: 450px; text-align: center;">
+            <button class="hist-close" onclick="document.getElementById('gerenciarModalOverlay').classList.remove('active')">&times;</button>
+            <h3 id="gerenciar-modal-title" style="margin-bottom: 2rem;">Gerenciar Cliente</h3>
+            <div id="gerenciar-modal-actions" style="display: flex; flex-direction: column; gap: 1rem;">
+                <!-- Preenchido via JS -->
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Histórico do Cliente -->
     <div class="hist-modal-overlay" id="histModalOverlay">
         <div class="hist-modal">
@@ -499,11 +510,8 @@
                     <td>${c.email}</td>
                     <td>${c.telefone}</td>
                     <td>${badge}</td>
-                    <td style="display:flex; gap:0.8rem; flex-wrap:wrap; padding: 1.25rem;">
-                        <button onclick="verHistorico('${c.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem;">Histórico</button>
-                        <button onclick="mudarSenha('${c.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem;">Senha</button>
-                        <button onclick="promoverClienteAdmin('${c.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem; background: var(--c-primary-light); color: var(--c-primary); border-color: var(--c-primary-light);">Tornar Admin</button>
-                        <button onclick="deletarCliente('${c.id}')" style="color:red; cursor:pointer; background:none; border:1px solid red; border-radius:6px; padding:0.3rem 0.6rem; font-size:0.8rem;">Remover</button>
+                    <td style="padding: 1.25rem;">
+                        <button onclick="abrirGerenciarCliente('${c.id}', '${c.razaoSocial}')" class="btn btn-primary" style="padding:0.5rem 1.2rem; font-size:0.85rem; width: 100%;">Gerenciar</button>
                     </td>
                 </tr>`;
             }).join('') || `<tr><td colspan="6">Vazio</td></tr>`;
@@ -637,6 +645,23 @@
                 await carregarDados();
                 await CustomUI.alert('Cliente removido com sucesso.', 'Sucesso');
             }
+        }
+
+        function abrirGerenciarCliente(id, nome) {
+            document.getElementById('gerenciar-modal-title').innerText = nome;
+            const container = document.getElementById('gerenciar-modal-actions');
+            container.innerHTML = `
+                <button onclick="verHistorico('${id}'); fecharModais();" class="btn btn-outline" style="padding: 1rem; justify-content: flex-start;"><i data-lucide="history"></i> Ver Histórico de Serviços</button>
+                <button onclick="mudarSenha('${id}'); fecharModais();" class="btn btn-outline" style="padding: 1rem; justify-content: flex-start;"><i data-lucide="key"></i> Redefinir Senha de Acesso</button>
+                <button onclick="promoverClienteAdmin('${id}'); fecharModais();" class="btn btn-outline" style="padding: 1rem; justify-content: flex-start; background: var(--c-primary-light); color: var(--c-primary); border: none;"><i data-lucide="user-plus"></i> Tornar Administrador</button>
+                <button onclick="deletarCliente('${id}'); fecharModais();" class="btn btn-outline" style="padding: 1rem; justify-content: flex-start; color: #ef4444; border-color: #fee2e2;"><i data-lucide="trash-2"></i> Remover Cliente Definitivamente</button>
+            `;
+            lucide.createIcons();
+            document.getElementById('gerenciarModalOverlay').classList.add('active');
+        }
+
+        function fecharModais() {
+            document.querySelectorAll('.hist-modal-overlay').forEach(el => el.classList.remove('active'));
         }
 
         async function verHistorico(clienteId) {

@@ -30,7 +30,7 @@
 
             <div class="nav-links" id="nav-links">
                 <a href="#home" class="nav-link active" data-target="home">Início</a>
-                <a href="#servicos" class="nav-link" data-target="servicos">Serviços</a>
+                <a href="#feedbacks" class="nav-link" data-target="feedbacks">Depoimentos</a>
                 <a href="#noticias" class="nav-link" data-target="noticias">Notícias</a>
                 <a href="#galeria" class="nav-link" data-target="galeria">Galeria</a>
                 <a href="#contato" class="nav-link" data-target="contato">Contato</a>
@@ -184,15 +184,40 @@
             </section>
         </div>
 
-        <div id="view-galeria" class="view">
-            <!-- Gallery Section -->
-            <section class="gallery" id="galeria">
+        <div id="view-feedbacks" class="view">
+            <!-- Feedbacks Section -->
+            <section class="feedbacks" id="feedbacks">
                 <div class="container">
                     <div class="section-header">
-                        <h2 class="section-title">Galeria de Ações</h2>
+                        <h2 class="section-title">Depoimentos dos Clientes</h2>
+                        <p class="section-desc">Confira o que nossos clientes dizem sobre as soluções da LM Segurança.</p>
                     </div>
-                    <div class="grid grid-4" id="gallery-container">
+
+                    <div id="feedback-success-msg" style="display:none; background: #dcfce7; color: #166534; padding: 1rem; border-radius: 8px; margin-bottom: 2rem; text-align: center;">
+                        <strong>Sucesso!</strong> Seu depoimento foi enviado e está em análise para aprovação.
+                    </div>
+
+                    <div class="grid grid-3" id="feedbacks-container">
                         <!-- Filled by JS -->
+                    </div>
+
+                    <!-- Client Feedback Form (Only for logged users) -->
+                    <div id="client-feedback-form-container" style="display:none; margin-top: 4rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+                        <div class="glass-panel" style="padding: 2.5rem;">
+                            <h3 style="margin-bottom: 1rem; text-align: center;">Deixe seu Depoimento</h3>
+                            <p style="text-align: center; color: var(--c-gray-600); margin-bottom: 2rem;">Sua opinião é fundamental para evoluirmos nossos serviços.</p>
+                            <form id="feedbackForm">
+                                <div class="form-group">
+                                    <label>Sua Mensagem</label>
+                                    <textarea id="feedback-msg" rows="4" placeholder="Como foi sua experiência com a nossa consultoria?" required></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-full" id="btnSubmitFeedback">Enviar Depoimento</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div id="feedback-login-prompt" style="text-align: center; margin-top: 3rem; color: var(--c-gray-600);">
+                        <p>Deseja deixar um depoimento? <strong style="color: var(--c-primary); cursor: pointer;" onclick="document.getElementById('btnLoginModal').click()">Faça login</strong> para comentar.</p>
                     </div>
                 </div>
             </section>
@@ -294,16 +319,20 @@
             <div class="footer-links">
                 <h4>Empresa</h4>
                 <a href="#home">Início</a>
-                <a href="#servicos">Serviços</a>
+                <a href="#feedbacks">Depoimentos</a>
                 <a href="#noticias">Notícias</a>
                 <a href="#contato">Contato</a>
             </div>
             <div class="footer-social">
                 <h4>Siga-nos</h4>
                 <div class="social-icons">
-                    <a href="https://instagram.com/lmsegurancaesst" target="_blank"><i data-lucide="instagram"></i></a>
-                    <a href="#"><i data-lucide="linkedin"></i></a>
-                    <a href="#"><i data-lucide="facebook"></i></a>
+                    <a href="https://instagram.com/lmsegurancaesst" target="_blank" title="Siga-nos no Instagram">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+                            <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
+                            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                            <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line>
+                        </svg>
+                    </a>
                 </div>
             </div>
         </div>

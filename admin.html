@@ -115,6 +115,7 @@
             <button class="tab-btn" onclick="showTab('galeria')"><i data-lucide="image" style="display:inline-block; vertical-align:middle; width: 18px;"></i> Gerenciar Galeria</button>
             <button class="tab-btn" onclick="showTab('servicos')"><i data-lucide="list" style="display:inline-block; vertical-align:middle; width: 18px;"></i> Opções de Agendamento</button>
             <button class="tab-btn" onclick="showTab('vitrine')"><i data-lucide="layout-grid" style="display:inline-block; vertical-align:middle; width: 18px;"></i> Serviços do Site</button>
+            <button class="tab-btn" onclick="showTab('feedbacks')"><i data-lucide="message-square" style="display:inline-block; vertical-align:middle; width: 18px;"></i> Feedbacks</button>
             <button class="tab-btn" onclick="showTab('admins')"><i data-lucide="shield-alert" style="display:inline-block; vertical-align:middle; width: 18px;"></i> Gerenciar Admins</button>
         </div>
 
@@ -208,6 +209,26 @@
                 <table class="data-table">
                     <thead><tr><th>Foto / URL</th><th>Ação</th></tr></thead>
                     <tbody id="lista-galeria"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-feedbacks" class="tab-content">
+            <h2>Gerenciar Depoimentos dos Clientes</h2>
+            <p style="margin-bottom: 2rem; color: var(--c-gray-600);">Novos feedbacks aparecem aqui como "Pendentes" e só ficam visíveis no site após a aprovação.</p>
+            
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Cliente</th>
+                            <th>Depoimento</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-feedbacks"></tbody>
                 </table>
             </div>
         </div>
@@ -429,6 +450,30 @@
                     <td><button onclick="deletarVitrine('${v.id}')" style="color:red; cursor:pointer; background:none; border:none;">Remover</button></td>
                 </tr>
             `).join('') || `<tr><td colspan="4">Nenhum card cadastrado. Os 4 padrões serão exibidos.</td></tr>`;
+
+            // Feedbacks
+            const feedbacks = await DBService.getFeedbacksAdmin();
+            document.getElementById('lista-feedbacks').innerHTML = feedbacks.map(f => {
+                const isAprovado = f.status === 'Aprovado';
+                return `
+                <tr>
+                    <td>${new Date(f.data).toLocaleDateString()}</td>
+                    <td><strong>${f.clienteNome}</strong></td>
+                    <td style="max-width:300px; font-size:0.9rem;">
+                        "${f.mensagem}"
+                        ${f.resposta ? `<div style="margin-top:0.5rem; color:var(--c-primary); font-size:0.8rem;"><strong>Sua Resposta:</strong> ${f.resposta}</div>` : ''}
+                    </td>
+                    <td>
+                        <span class="status-badge status-${f.status || 'Pendente'}">${f.status || 'Pendente'}</span>
+                    </td>
+                    <td style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                        ${!isAprovado ? `<button onclick="aprovarFeedback('${f.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem; background:#d1fae5; color:#065f46; border-color:#d1fae5;">Aprovar</button>` : ''}
+                        <button onclick="comentarFeedback('${f.id}')" class="btn btn-outline" style="padding:0.3rem 0.6rem; font-size:0.8rem;">${f.resposta ? 'Editar Resposta' : 'Responder'}</button>
+                        <button onclick="deletarFeedback('${f.id}')" style="color:red; cursor:pointer; background:none; border:1px solid red; border-radius:6px; padding:0.3rem 0.6rem; font-size:0.8rem;">Remover</button>
+                    </td>
+                </tr>`;
+            }).join('') || `<tr><td colspan="5">Nenhum depoimento encontrado.</td></tr>`;
+
             lucide.createIcons();
         }
 
@@ -589,6 +634,30 @@
             if(isConfirmed) {
                 await DBService.deleteServicoVitrine(id);
                 await carregarDados();
+            }
+        }
+
+        async function aprovarFeedback(id) {
+            await DBService.updateFeedbackStatus(id, 'Aprovado');
+            await carregarDados();
+            await CustomUI.alert('Depoimento aprovado e visível no site!', 'Sucesso');
+        }
+
+        async function deletarFeedback(id) {
+            const isConfirmed = await CustomUI.confirm('Deseja remover este depoimento permanentemente?', 'Remover Feedback');
+            if(isConfirmed) {
+                await DBService.deleteFeedback(id);
+                await carregarDados();
+                await CustomUI.alert('Feedback removido.', 'Sucesso');
+            }
+        }
+
+        async function comentarFeedback(id) {
+            const resposta = await CustomUI.prompt('Escreva sua resposta para o cliente (aparecerá abaixo do depoimento dele):', '', 'Responder Depoimento');
+            if (resposta !== null) {
+                await DBService.responderFeedback(id, resposta);
+                await carregarDados();
+                await CustomUI.alert('Resposta salva!', 'Sucesso');
             }
         }
 

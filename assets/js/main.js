@@ -5,14 +5,18 @@ async function renderNoticias() {
     const noticiasGrid = document.getElementById('news-container');
     if (!noticiasGrid) return;
 
-    // Fetch dynamically or fallback locally
+    // Fetch dynamically from DB
     let newsList = await DBService.getNoticias();
+    
     if (newsList.length === 0) {
-        newsList = [
-            { titulo: 'Novo Custo do eSocial para 2026', resumo: 'Entenda as principais mudanças na tabela de multas por falta de envio dos eventos...', tag: 'Legislação', imagem: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80', data: new Date().toISOString() },
-            { titulo: 'A importância da NR-12 em Máquinas Pesadas', resumo: 'Como adequar o seu maquinário e evitar paralisações pela fiscalização do trabalho.', tag: 'Prevenção', imagem: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80', data: new Date().toISOString() },
-            { titulo: 'Treinamento de Brigada de Incêndio', resumo: 'Abrimos novas turmas corporativas para treinamento prático de combate a incêndio.', tag: 'Cursos', imagem: 'https://images.unsplash.com/photo-1599389914442-70b991316b25?auto=format&fit=crop&q=80', data: new Date().toISOString() }
-        ];
+        noticiasGrid.innerHTML = `
+            <div class="empty-state">
+                <i data-lucide="newspaper"></i>
+                <p>Não há notícias publicadas no momento.</p>
+            </div>
+        `;
+        lucide.createIcons();
+        return;
     }
 
     // Filter if search
@@ -38,13 +42,16 @@ async function renderGaleria() {
     if (!galleryGrid) return;
 
     let galleryItems = await DBService.getGaleria();
+    
     if (galleryItems.length === 0) {
-        galleryItems = [
-            { url: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&q=80' },
-            { url: 'https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?auto=format&fit=crop&q=80' },
-            { url: 'https://images.unsplash.com/photo-1533583204996-03f69cf0acbc?auto=format&fit=crop&q=80' },
-            { url: 'https://images.unsplash.com/photo-1541888086026-62bda2472ff2?auto=format&fit=crop&q=80' }
-        ];
+        galleryGrid.innerHTML = `
+            <div class="empty-state">
+                <i data-lucide="image"></i>
+                <p>Não há fotos publicadas no momento.</p>
+            </div>
+        `;
+        lucide.createIcons();
+        return;
     }
 
     galleryGrid.innerHTML = galleryItems.map(item => `
@@ -56,6 +63,45 @@ async function renderGaleria() {
         </div>
     `).join('');
     lucide.createIcons();
+}
+
+async function renderFeedbacks() {
+    const container = document.getElementById('feedbacks-container');
+    if (!container) return;
+
+    const feedbacks = await DBService.getFeedbacksPublic();
+
+    if (feedbacks.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i data-lucide="message-square"></i>
+                <p>Ainda não há depoimentos publicados.</p>
+            </div>
+        `;
+        lucide.createIcons();
+        return;
+    }
+
+    container.innerHTML = feedbacks.map(f => `
+        <div class="glass-panel" style="padding: 2rem; display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="width: 48px; height: 48px; background: var(--c-primary-light); color: var(--c-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700;">
+                    ${f.clienteNome ? f.clienteNome.charAt(0).toUpperCase() : 'C'}
+                </div>
+                <div>
+                    <h4 style="margin: 0; color: var(--c-gray-900);">${f.clienteNome || 'Cliente LM'}</h4>
+                    <small style="color: var(--c-gray-600);">${new Date(f.data).toLocaleDateString('pt-BR')}</small>
+                </div>
+            </div>
+            <p style="font-style: italic; color: var(--c-gray-700); line-height: 1.6;">"${f.mensagem}"</p>
+            ${f.resposta ? `
+                <div style="margin-top: 1rem; padding: 1rem; background: rgba(31, 156, 74, 0.05); border-left: 3px solid var(--c-primary); border-radius: 0 8px 8px 0;">
+                    <small style="display: block; font-weight: 700; color: var(--c-primary); margin-bottom: 0.25rem;">Resposta da LM Segurança:</small>
+                    <p style="margin: 0; font-size: 0.9rem; color: var(--c-gray-700);">${f.resposta}</p>
+                </div>
+            ` : ''}
+        </div>
+    `).join('');
 }
 
 // Initial renders
@@ -110,6 +156,7 @@ async function renderServicosDropdown() {
 window.addEventListener('DOMContentLoaded', () => {
     renderNoticias();
     renderGaleria();
+    renderFeedbacks();
     renderServicosDropdown();
     renderServicosVitrine();
 });
@@ -276,6 +323,41 @@ document.getElementById('contactForm')?.addEventListener('submit', (e) => {
     e.target.reset();
 });
 
+document.getElementById('feedbackForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitFeedback');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'Enviando...';
+    btn.disabled = true;
+
+    const userStr = sessionStorage.getItem('lm_user');
+    if (!userStr) {
+        await CustomUI.alert('Você precisa estar logado para enviar um depoimento.', 'Aviso');
+        return;
+    }
+    const user = JSON.parse(userStr);
+
+    const feedback = {
+        clienteId: user.id,
+        clienteNome: user.responsavel || user.razaoSocial,
+        mensagem: document.getElementById('feedback-msg').value
+    };
+
+    const res = await DBService.salvarFeedback(feedback);
+
+    if (res.success) {
+        document.getElementById('feedback-success-msg').style.display = 'block';
+        document.getElementById('client-feedback-form-container').style.display = 'none';
+        e.target.reset();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+        await CustomUI.alert('Houve um erro ao enviar seu depoimento. Tente novamente.', 'Erro');
+    }
+    
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+});
+
 document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector('button');
@@ -380,14 +462,20 @@ function checkLoginState() {
     const userStr = sessionStorage.getItem('lm_user');
     const authButtons = document.getElementById('auth-buttons');
     const userMenu = document.getElementById('user-menu');
+    const feedbackForm = document.getElementById('client-feedback-form-container');
+    const feedbackPrompt = document.getElementById('feedback-login-prompt');
 
     if (userStr) {
         if (authButtons) authButtons.style.display = 'none';
         if (userMenu) userMenu.style.display = 'flex';
+        if (feedbackForm) feedbackForm.style.display = 'block';
+        if (feedbackPrompt) feedbackPrompt.style.display = 'none';
         renderAreaCliente();
     } else {
         if (authButtons) authButtons.style.display = 'flex';
         if (userMenu) userMenu.style.display = 'none';
+        if (feedbackForm) feedbackForm.style.display = 'none';
+        if (feedbackPrompt) feedbackPrompt.style.display = 'block';
     }
 }
 

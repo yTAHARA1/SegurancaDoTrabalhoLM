@@ -530,6 +530,69 @@ const DBService = {
         }
     },
 
+    // === CMS: FEEDBACKS (DEPOIMENTOS) ===
+    async salvarFeedback(feedbackData) {
+        feedbackData.data = new Date().toISOString();
+        feedbackData.status = 'Pendente'; // Todo feedback começa pendente de aprovação
+        if (dbFuncional) {
+            try {
+                const res = await db.collection("feedbacks").add(feedbackData);
+                return { success: true, id: res.id };
+            } catch (e) { return { success: false, error: e }; }
+        } else {
+            const docs = JSON.parse(localStorage.getItem('lm_feedbacks') || '[]');
+            feedbackData.id = 'local_' + Date.now();
+            docs.push(feedbackData);
+            localStorage.setItem('lm_feedbacks', JSON.stringify(docs));
+            return { success: true };
+        }
+    },
+    async getFeedbacksPublic() {
+        if (dbFuncional) {
+            const snap = await db.collection("feedbacks").where("status", "==", "Aprovado").orderBy("data", "desc").get();
+            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        }
+        const docs = JSON.parse(localStorage.getItem('lm_feedbacks') || '[]');
+        return docs.filter(f => f.status === 'Aprovado').sort((a, b) => new Date(b.data) - new Date(a.data));
+    },
+    async getFeedbacksAdmin() {
+        if (dbFuncional) {
+            const snap = await db.collection("feedbacks").orderBy("data", "desc").get();
+            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        }
+        return JSON.parse(localStorage.getItem('lm_feedbacks') || '[]').sort((a, b) => new Date(b.data) - new Date(a.data));
+    },
+    async updateFeedbackStatus(id, novoStatus) {
+        if (dbFuncional) {
+            await db.collection("feedbacks").doc(id).update({ status: novoStatus });
+        } else {
+            let docs = JSON.parse(localStorage.getItem('lm_feedbacks') || '[]');
+            docs = docs.map(d => d.id === id ? { ...d, status: novoStatus } : d);
+            localStorage.setItem('lm_feedbacks', JSON.stringify(docs));
+        }
+        return { success: true };
+    },
+    async responderFeedback(id, resposta) {
+        if (dbFuncional) {
+            await db.collection("feedbacks").doc(id).update({ 
+                resposta: resposta,
+                dataResposta: new Date().toISOString()
+            });
+        } else {
+            let docs = JSON.parse(localStorage.getItem('lm_feedbacks') || '[]');
+            docs = docs.map(d => d.id === id ? { ...d, resposta: resposta, dataResposta: new Date().toISOString() } : d);
+            localStorage.setItem('lm_feedbacks', JSON.stringify(docs));
+        }
+        return { success: true };
+    },
+    async deleteFeedback(id) {
+        if (dbFuncional) await db.collection("feedbacks").doc(id).delete();
+        else {
+            let docs = JSON.parse(localStorage.getItem('lm_feedbacks') || '[]');
+            localStorage.setItem('lm_feedbacks', JSON.stringify(docs.filter(d => d.id !== id)));
+        }
+        return { success: true };
+    },
     // === BUSCAR CLIENTE POR EMAIL OU CNPJ (para recuperação de senha) ===
     async buscarClientePorAcesso(acesso) {
         if (dbFuncional) {

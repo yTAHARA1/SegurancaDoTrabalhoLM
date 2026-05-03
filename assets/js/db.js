@@ -267,10 +267,10 @@ const DBService = {
             }
         } else {
             const admins = JSON.parse(localStorage.getItem('lm_admins') || '[]');
-            const user = admins.find(a => a.usuario === usuario && a.senha === senha);
+            const user = admins.find(a => a.usuario === email && a.senha === senha);
             
             // Seed local
-            if (!user && admins.length === 0 && usuario === 'adminlm' && senha === 'lmseguranca') {
+            if (!user && admins.length === 0 && email === 'adminlm' && senha === 'lmseguranca') {
                 const defaultAdm = { id: 'local_admin_1', usuario: 'adminlm', senha: 'lmseguranca', dataCriacao: new Date().toISOString() };
                 admins.push(defaultAdm);
                 localStorage.setItem('lm_admins', JSON.stringify(admins));

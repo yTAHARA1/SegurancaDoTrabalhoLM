@@ -561,13 +561,19 @@
 
         document.getElementById('formAdmin')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            await DBService.salvarAdmin({
-                usuario: document.getElementById('admin-email').value,
+            const emailValue = document.getElementById('admin-email').value;
+            const res = await DBService.salvarAdmin({
+                email: emailValue,
+                usuario: emailValue, // fallback util pros modulos atuais
                 senha: document.getElementById('admin-pass').value
             });
-            e.target.reset();
-            carregarDados();
-            await CustomUI.alert('Novo Administrador criado com sucesso!', 'Sucesso');
+            if (res.success) {
+                e.target.reset();
+                carregarDados();
+                await CustomUI.alert('Novo Administrador criado com sucesso!', 'Sucesso');
+            } else {
+                await CustomUI.alert('Erro ao criar administrador: ' + (res.error?.message || 'Desconhecido.'), 'Erro');
+            }
         });
 
         document.getElementById('formServico')?.addEventListener('submit', async (e) => {

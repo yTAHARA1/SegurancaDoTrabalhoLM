@@ -86,10 +86,10 @@ async function renderFeedbacks() {
         <div class="glass-panel" style="padding: 2rem; display: flex; flex-direction: column; gap: 1rem;">
             <div style="display: flex; align-items: center; gap: 1rem;">
                 <div style="width: 48px; height: 48px; background: var(--c-primary-light); color: var(--c-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700;">
-                    ${f.clienteNome ? f.clienteNome.charAt(0).toUpperCase() : 'C'}
+                    C
                 </div>
                 <div>
-                    <h4 style="margin: 0; color: var(--c-gray-900);">${f.clienteNome || 'Cliente LM'}</h4>
+                    <h4 style="margin: 0; color: var(--c-gray-900);">Cliente Parceiro</h4>
                     <small style="color: var(--c-gray-600);">${new Date(f.data).toLocaleDateString('pt-BR')}</small>
                 </div>
             </div>
@@ -208,6 +208,15 @@ window.addEventListener('popstate', () => {
 // Mobile menu toggle
 mobileMenuToggle?.addEventListener('click', () => {
     navLinksContainer.classList.toggle('show');
+});
+
+// Hero button to scroll to services
+document.getElementById('btnConhecaSolucoes')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const section = document.getElementById('servicos');
+    if (section) {
+        section.scrollIntoView({ behavior: 'smooth' });
+    }
 });
 
 

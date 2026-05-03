@@ -46,7 +46,8 @@
                     </button>
                 </div>
                 <div id="user-menu" style="display:none; align-items:center; gap:10px;">
-                    <button class="btn btn-primary" id="btnAreaCliente" onclick="document.querySelector('.nav-link[data-target=\'area-cliente\']')?.click() || switchView('area-cliente')">
+                    <button class="btn btn-primary" id="btnAreaCliente"
+                        onclick="document.querySelector('.nav-link[data-target=\'area-cliente\']')?.click() || switchView('area-cliente')">
                         <i data-lucide="user"></i> Meu Painel
                     </button>
                 </div>
@@ -65,10 +66,12 @@
                 <div class="hero-bg-shape"></div>
                 <div class="container hero-grid">
                     <div class="hero-content">
-                        <h1 class="hero-title">Segurança e Saúde de <span class="text-gradient">Excelência</span><br> para seu Negócio</h1>
+                        <h1 class="hero-title">Segurança e Saúde de <span class="text-gradient">Excelência</span><br>
+                            para seu Negócio</h1>
                         <p class="hero-subtitle">
                             <span class="highlight-quote">"Protegendo sua empresa e seus colaboradores"</span>
-                            Garantimos a proteção dos seus colaboradores por meio de soluções eficientes, personalizadas e rigorosamente dentro das normas vigentes.
+                            Garantimos a proteção dos seus colaboradores por meio de soluções eficientes, personalizadas
+                            e rigorosamente dentro das normas vigentes.
                         </p>
                         <div class="hero-buttons">
                             <button class="btn btn-primary" id="btnAgendamentoHome">
@@ -78,14 +81,37 @@
                         </div>
                     </div>
                     <div class="hero-visual">
-                        <img src="https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Profissional de Segurança do Trabalho" class="hero-visual-img">
-                        <div class="hero-floating-badge">
-                            <div class="icon">
-                                <i data-lucide="shield-check"></i>
+                        <div class="glow-orb orb-1"></div>
+                        <div class="glow-orb orb-2"></div>
+                        
+                        <div class="glass-decoration main-card">
+                            <div class="card-header">
+                                <span class="dot red"></span>
+                                <span class="dot yellow"></span>
+                                <span class="dot green"></span>
                             </div>
-                            <div>
-                                <div class="text">100% Legal</div>
-                                <div class="subtext">Auditorias Aprovadas</div>
+                            <div class="card-body">
+                                <div class="mock-line title"></div>
+                                <div class="mock-line"></div>
+                                <div class="mock-line" style="width: 80%;"></div>
+                                <div class="mock-stats">
+                                    <div class="stat-box">
+                                        <i data-lucide="shield-check"></i>
+                                        <span>Risco Zero</span>
+                                    </div>
+                                    <div class="stat-box">
+                                        <i data-lucide="activity"></i>
+                                        <span>Monitoramento</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="glass-decoration card-overlap">
+                            <i data-lucide="file-check-2" class="big-icon"></i>
+                            <div class="info">
+                                <strong>PGR & PCMSO</strong>
+                                <span>Em conformidade</span>
                             </div>
                         </div>
                     </div>
@@ -216,23 +242,27 @@
         <div id="view-area-cliente" class="view">
             <section class="area-cliente" id="area-cliente" style="padding: 100px 0; min-height: 70vh;">
                 <div class="container">
-                    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 2rem;">
+                    <div class="section-header"
+                        style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 2rem;">
                         <div style="text-align: left;">
                             <h2 class="section-title">Meu Painel</h2>
                             <p class="section-desc" id="cliente-nome-display" style="margin:0;">Bem-vindo, Cliente.</p>
                         </div>
                         <div style="display: flex; gap: 10px; margin-top: 10px;">
-                            <button class="btn btn-primary" onclick="document.getElementById('btnAgendamentoHome').click()"><i data-lucide="plus"></i> Nova Solicitação</button>
+                            <button class="btn btn-primary"
+                                onclick="document.getElementById('btnAgendamentoHome').click()"><i
+                                    data-lucide="plus"></i> Nova Solicitação</button>
                             <button class="btn btn-outline" id="btnLogout"><i data-lucide="log-out"></i> Sair</button>
                         </div>
                     </div>
-                    
+
                     <div class="glass-panel" style="padding: 2rem; border-radius: 12px;">
                         <h3 style="margin-bottom: 1rem;">Minhas Solicitações de Serviço</h3>
                         <div style="overflow-x:auto;">
                             <table class="data-table" style="width: 100%; text-align: left; border-collapse: collapse;">
                                 <thead>
-                                    <tr style="border-bottom: 2px solid var(--c-gray-200); background-color: var(--c-gray-100);">
+                                    <tr
+                                        style="border-bottom: 2px solid var(--c-gray-200); background-color: var(--c-gray-100);">
                                         <th style="padding: 1rem;">Código</th>
                                         <th style="padding: 1rem;">Serviço</th>
                                         <th style="padding: 1rem;">Data Preferencial</th>
@@ -254,7 +284,8 @@
     <!-- Footer -->
     <footer style="position:relative;">
         <!-- Botão secreto de administrador -->
-        <a href="admin.html" style="position:absolute; bottom: 10px; right: 10px; opacity: 0.1; font-size: 10px; cursor: default;">π</a>
+        <a href="admin.html"
+            style="position:absolute; bottom: 10px; right: 10px; opacity: 0.1; font-size: 10px; cursor: default;">π</a>
         <div class="container footer-content">
             <div class="footer-brand">
                 <img src="assets/img/logo.png" alt="Logo LM Segurança e Saúde" class="logo-img-footer">
@@ -301,9 +332,15 @@
                     <label>Senha</label>
                     <input type="password" id="login-senha" placeholder="Sua senha" required>
                 </div>
-                <button type="submit" class="btn btn-primary w-full" id="btnFazerLogin"><i data-lucide="log-in"></i> Entrar</button>
-                <p style="text-align:center; margin-top: 0.8rem; color: var(--c-gray-600); cursor: pointer;" onclick="document.getElementById('closeLoginModal').click(); document.getElementById('btnCadastroModal').click();">Não tem acesso? <strong>Cadastre-se</strong></p>
-                <p id="btnEsqueciSenha" style="text-align:center; margin-top: 0.3rem; color: var(--c-primary); cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">🔑 Esqueci minha senha</p>
+                <button type="submit" class="btn btn-primary w-full" id="btnFazerLogin"><i data-lucide="log-in"></i>
+                    Entrar</button>
+                <p style="text-align:center; margin-top: 0.8rem; color: var(--c-gray-600); cursor: pointer;"
+                    onclick="document.getElementById('closeLoginModal').click(); document.getElementById('btnCadastroModal').click();">
+                    Não tem acesso? <strong>Cadastre-se</strong></p>
+                <p id="btnEsqueciSenha"
+                    style="text-align:center; margin-top: 0.3rem; color: var(--c-primary); cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: opacity 0.2s;"
+                    onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">🔑 Esqueci minha senha
+                </p>
             </form>
         </div>
     </div>
@@ -339,7 +376,8 @@
                     <label>Crie uma Senha para o Acesso</label>
                     <input type="password" id="cad-senha" placeholder="Mínimo de 6 caracteres" required>
                 </div>
-                <button type="submit" class="btn btn-primary w-full"><i data-lucide="check-circle"></i> Enviar Cadastro</button>
+                <button type="submit" class="btn btn-primary w-full"><i data-lucide="check-circle"></i> Enviar
+                    Cadastro</button>
             </form>
         </div>
     </div>

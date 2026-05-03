@@ -4,7 +4,9 @@
  */
 window.CustomUI = {
     _createOverlay() {
+        if (document.getElementById('custom-ui-overlay')) return null;
         const overlay = document.createElement('div');
+        overlay.id = 'custom-ui-overlay';
         overlay.style.cssText = `
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0, 0, 0, 0.6);
@@ -39,6 +41,8 @@ window.CustomUI = {
     alert(message, title = 'Aviso') {
         return new Promise((resolve) => {
             const overlay = this._createOverlay();
+            if (!overlay) return resolve(); // Anti-spam: já existe um alert na tela
+            
             const box = this._createModalBox();
             
             box.innerHTML = `
@@ -71,6 +75,8 @@ window.CustomUI = {
     confirm(message, title = 'Confirmação') {
         return new Promise((resolve) => {
             const overlay = this._createOverlay();
+            if (!overlay) return resolve(false); // Anti-spam
+            
             const box = this._createModalBox();
             
             box.innerHTML = `
@@ -107,6 +113,8 @@ window.CustomUI = {
     prompt(message, defaultValue = '', title = 'Entrada de Dados') {
         return new Promise((resolve) => {
             const overlay = this._createOverlay();
+            if (!overlay) return resolve(null); // Anti-spam
+            
             const box = this._createModalBox();
             
             box.innerHTML = `

@@ -562,7 +562,7 @@
         document.getElementById('formAdmin')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             await DBService.salvarAdmin({
-                usuario: document.getElementById('admin-user').value,
+                usuario: document.getElementById('admin-email').value,
                 senha: document.getElementById('admin-pass').value
             });
             e.target.reset();

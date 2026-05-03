@@ -199,7 +199,7 @@ document.getElementById('cadastroForm')?.addEventListener('submit', async (e) =>
     const result = await DBService.salvarCliente(cliente);
 
     if (result.success) {
-        alert('Empresa cadastrada com sucesso! Nossa equipe validará seu acesso em breve.');
+        alert('Cadastro realizado com sucesso!\n\n⚠️ INSTRUÇÃO IMPORTANTE: Enviamos um link de verificação para o seu endereço de e-mail. Por favor, acesse seu e-mail e clique no link para ativar sua conta antes de fazer o Login.');
         document.getElementById('cadastroModal').classList.remove('active');
         e.target.reset();
     } else {
@@ -285,13 +285,6 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     const acesso = document.getElementById('login-acesso').value;
     const senha = document.getElementById('login-senha').value;
 
-    // Admin redirect check (Master fixo)   
-    if (acesso.toLowerCase() === 'adminlm' && (senha === 'senhalm' || senha === 'lmseguranca')) {
-        sessionStorage.setItem('adminAuth', 'true');
-        window.location.href = 'admin.html';
-        return;
-    }
-
     // Admin redirect check (Dinâmico do banco)
     if (typeof DBService.loginAdmin === 'function') {
         const adminRes = await DBService.loginAdmin(acesso, senha);
@@ -310,7 +303,12 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
         checkLoginState();
         switchView('area-cliente');
     } else {
-        alert('Acesso ou senha inválidos. Tente novamente.');
+        // Exibe mensagem customizada se for erro de validação de e-mail
+        if (res.error && res.error.code === 'auth/email-not-verified') {
+            alert(res.error.message);
+        } else {
+            alert('Acesso ou senha inválidos. Tente novamente.');
+        }
     }
     btn.innerHTML = originalText;
 });

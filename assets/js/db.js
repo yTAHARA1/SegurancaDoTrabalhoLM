@@ -42,6 +42,9 @@ const DBService = {
                 const authUser = await firebase.auth().createUserWithEmailAndPassword(clienteData.email, clienteData.senha);
                 const uid = authUser.user.uid;
                 
+                // Dispara o e-mail oficial do Firebase para autenticidade da conta
+                await authUser.user.sendEmailVerification();
+                
                 // Remove a senha para não salvar no Firestore
                 const copiaCliente = { ...clienteData };
                 delete copiaCliente.senha;
@@ -82,6 +85,11 @@ const DBService = {
                 try {
                     // Tenta o login com Auth Nativo
                     const authRes = await firebase.auth().signInWithEmailAndPassword(emailToLogin, senha);
+                    
+                    // Validação de E-mail: Bloqueia caso ele ainda não tenha clicado no link do e-mail
+                    if (!authRes.user.emailVerified) {
+                        return { success: false, error: { code: 'auth/email-not-verified', message: 'Por favor, confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada/spam.' } };
+                    }
                     
                     // Puxar os dados do Firestore
                     const userDoc = await db.collection("clientes").doc(authRes.user.uid).get();
@@ -203,11 +211,33 @@ const DBService = {
             try {
                 const snapshot = await db.collection("admins").where("usuario", "==", usuario).where("senha", "==", senha).get();
                 if (!snapshot.empty) return { success: true, admin: snapshot.docs[0].data() };
+                
+                // Rotina "Bootstrap / Seed" (Caso banco de dados esteja vazio ou tenha sido resetado)
+                const checkVazio = await db.collection("admins").limit(1).get();
+                if (checkVazio.empty && usuario === 'adminlm' && senha === 'lmseguranca') {
+                     // Cria automaticamente a primeira conta no banco
+                     await db.collection("admins").add({
+                         usuario: 'adminlm',
+                         senha: 'lmseguranca',
+                         dataCriacao: new Date().toISOString()
+                     });
+                     return { success: true, admin: { usuario: 'adminlm' } };
+                }
+
                 return { success: false };
             } catch (e) { return { success: false }; }
         } else {
             const admins = JSON.parse(localStorage.getItem('lm_admins') || '[]');
             const user = admins.find(a => a.usuario === usuario && a.senha === senha);
+            
+            // Seed local
+            if (!user && admins.length === 0 && usuario === 'adminlm' && senha === 'lmseguranca') {
+                const defaultAdm = { id: 'local_admin_1', usuario: 'adminlm', senha: 'lmseguranca', dataCriacao: new Date().toISOString() };
+                admins.push(defaultAdm);
+                localStorage.setItem('lm_admins', JSON.stringify(admins));
+                return { success: true, admin: defaultAdm };
+            }
+            
             return user ? { success: true, admin: user } : { success: false };
         }
     },

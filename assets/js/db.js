@@ -4,14 +4,14 @@
  */
 
 // Configure aqui as suas chaves do Supabase
-const SUPABASE_URL = "SUA_URL_DO_SUPABASE";
-const SUPABASE_ANON_KEY = "SUA_CHAVE_ANON_PUBLICA";
+const SUPABASE_URL = "https://pbltaynfvhrlgmnwaapn.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_FtqFdPjsILmBfVFNK79CQQ_P36I_uUE";
 
 let dbFuncional = false;
 let supabase = null;
 
 try {
-    if (SUPABASE_URL !== "SUA_URL_DO_SUPABASE") {
+    if (SUPABASE_URL !== "https://pbltaynfvhrlgmnwaapn.supabase.co/rest/v1/") {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         dbFuncional = true;
         console.log("⚡ Supabase conectado com sucesso!");
@@ -81,7 +81,7 @@ const DBService = {
                     .select('email')
                     .eq('cnpj', acesso)
                     .single();
-                
+
                 if (profileData) {
                     emailToLogin = profileData.email;
                 } else {
@@ -97,7 +97,7 @@ const DBService = {
             if (error) return { success: false, error };
 
             const { data: userData } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
-            
+
             return { success: true, user: { id: data.user.id, ...userData } };
         } catch (error) {
             return { success: false, error };
@@ -192,7 +192,7 @@ const DBService = {
         const { data, error } = await supabase.from("servicos").insert([{ titulo: nome, descricao: '...' }]).select();
         return error ? { success: false, error } : { success: true, id: data[0].id };
     },
-    
+
     async getServicos() {
         if (!dbFuncional) return [];
         const { data } = await supabase.from("servicos").select("*").order('created_at', { ascending: true });
@@ -303,7 +303,7 @@ const DBService = {
             *,
             profiles(full_name)
         `).order('created_at', { ascending: false });
-        
+
         return data ? data.map(a => ({
             id: a.id,
             clienteId: a.user_id,

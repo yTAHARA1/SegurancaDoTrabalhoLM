@@ -8,11 +8,11 @@ const SUPABASE_URL = "https://pbltaynfvhrlgmnwaapn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_FtqFdPjsILmBfVFNK79CQQ_P36I_uUE";
 
 let dbFuncional = false;
-let supabase = null;
+let supabaseClient = null;
 
 try {
     if (SUPABASE_URL !== "https://pbltaynfvhrlgmnwaapn.supabase.co/rest/v1/") {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         dbFuncional = true;
         console.log("⚡ Supabase conectado com sucesso!");
     } else {
@@ -38,7 +38,7 @@ const DBService = {
 
         try {
             // Cria o usuário na Autenticação (A trigger sql já cria o profile)
-            const { data, error } = await supabase.auth.signUp({
+            const { data, error } = await supabaseClient.auth.signUp({
                 email: clienteData.email,
                 password: clienteData.senha,
                 options: {
@@ -54,7 +54,7 @@ const DBService = {
 
             // Como as informações extras (cnpj, telefone) ficam no metadata, se você 
             // quiser elas no painel do admin facilmente, o ideal é atualizar a tabela profiles.
-            await supabase.from('profiles').update({
+            await supabaseClient.from('profiles').update({
                 cnpj: clienteData.cnpj,
                 telefone: clienteData.telefone,
                 email: clienteData.email // Salvando copia do email na tabela pública
@@ -76,7 +76,7 @@ const DBService = {
 
             // Se for CNPJ, buscar o e-mail primeiro na tabela profiles
             if (!acesso.includes('@')) {
-                const { data: profileData, error: profileErr } = await supabase
+                const { data: profileData, error: profileErr } = await supabaseClient
                     .from('profiles')
                     .select('email')
                     .eq('cnpj', acesso)
@@ -89,14 +89,14 @@ const DBService = {
                 }
             }
 
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email: emailToLogin,
                 password: senha,
             });
 
             if (error) return { success: false, error };
 
-            const { data: userData } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+            const { data: userData } = await supabaseClient.from('profiles').select('*').eq('id', data.user.id).single();
 
             return { success: true, user: { id: data.user.id, ...userData } };
         } catch (error) {
@@ -107,7 +107,7 @@ const DBService = {
     async enviarEmailRecuperacao(email) {
         if (!dbFuncional) return { success: false };
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email);
+            const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
             if (error) throw error;
             return { success: true };
         } catch (error) {
@@ -124,7 +124,7 @@ const DBService = {
     async deleteCliente(id) {
         if (!dbFuncional) return { success: false };
         try {
-            const { error } = await supabase.from('profiles').delete().eq('id', id);
+            const { error } = await supabaseClient.from('profiles').delete().eq('id', id);
             if (error) throw error;
             return { success: true };
         } catch (error) {
@@ -135,13 +135,13 @@ const DBService = {
     async salvarAdmin(adminData) {
         if (!dbFuncional) return { success: false };
         try {
-            const { data, error } = await supabase.auth.signUp({
+            const { data, error } = await supabaseClient.auth.signUp({
                 email: adminData.email,
                 password: adminData.senha,
             });
             if (error) throw error;
 
-            await supabase.from('profiles').update({ role: 'admin' }).eq('id', data.user.id);
+            await supabaseClient.from('profiles').update({ role: 'admin' }).eq('id', data.user.id);
             return { success: true, id: data.user.id };
         } catch (error) {
             return { success: false, error };
@@ -150,19 +150,19 @@ const DBService = {
 
     async getAdmins() {
         if (!dbFuncional) return [];
-        const { data } = await supabase.from('profiles').select('*').eq('role', 'admin').order('created_at', { ascending: false });
+        const { data } = await supabaseClient.from('profiles').select('*').eq('role', 'admin').order('created_at', { ascending: false });
         return data || [];
     },
 
     async deleteAdmin(id) {
         if (!dbFuncional) return;
-        await supabase.from('profiles').delete().eq('id', id);
+        await supabaseClient.from('profiles').delete().eq('id', id);
     },
 
     async promoverAdmin(clienteId) {
         if (!dbFuncional) return { success: false };
         try {
-            const { error } = await supabase.from('profiles').update({ role: 'admin' }).eq('id', clienteId);
+            const { error } = await supabaseClient.from('profiles').update({ role: 'admin' }).eq('id', clienteId);
             if (error) throw error;
             return { success: true };
         } catch (error) {
@@ -173,14 +173,14 @@ const DBService = {
     async loginAdmin(email, senha) {
         if (!dbFuncional) return { success: false };
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
             if (error) throw error;
 
-            const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+            const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', data.user.id).single();
             if (profile && profile.role === 'admin') {
                 return { success: true, admin: { id: data.user.id, ...profile } };
             }
-            await supabase.auth.signOut();
+            await supabaseClient.auth.signOut();
             return { success: false, error: { message: "Você não tem permissão de administrador." } };
         } catch (e) {
             return { success: false, error: e };
@@ -189,43 +189,43 @@ const DBService = {
 
     async addServico(nome) {
         if (!dbFuncional) return { success: false };
-        const { data, error } = await supabase.from("servicos").insert([{ titulo: nome, descricao: '...' }]).select();
+        const { data, error } = await supabaseClient.from("servicos").insert([{ titulo: nome, descricao: '...' }]).select();
         return error ? { success: false, error } : { success: true, id: data[0].id };
     },
 
     async getServicos() {
         if (!dbFuncional) return [];
-        const { data } = await supabase.from("servicos").select("*").order('created_at', { ascending: true });
+        const { data } = await supabaseClient.from("servicos").select("*").order('created_at', { ascending: true });
         return data ? data.map(s => ({ id: s.id, nome: s.titulo })) : [];
     },
 
     async deleteServico(id) {
         if (!dbFuncional) return;
-        await supabase.from("servicos").delete().eq('id', id);
+        await supabaseClient.from("servicos").delete().eq('id', id);
     },
 
     async addServicoVitrine(item) {
         // Para manter a estrutura, vamos salvar isso em uma nova tabela 'servicos_vitrine' ou adaptar.
         if (!dbFuncional) return { success: false };
-        const { data, error } = await supabase.from("servicos_vitrine").insert([item]).select();
+        const { data, error } = await supabaseClient.from("servicos_vitrine").insert([item]).select();
         return error ? { success: false, error } : { success: true, id: data[0].id };
     },
 
     async getServicosVitrine() {
         if (!dbFuncional) return [];
-        const { data } = await supabase.from("servicos_vitrine").select("*").order('criadoEm', { ascending: true });
+        const { data } = await supabaseClient.from("servicos_vitrine").select("*").order('criadoEm', { ascending: true });
         return data || [];
     },
 
     async deleteServicoVitrine(id) {
         if (!dbFuncional) return;
-        await supabase.from("servicos_vitrine").delete().eq('id', id);
+        await supabaseClient.from("servicos_vitrine").delete().eq('id', id);
     },
 
     async addNoticia(noticiaData) {
         if (!dbFuncional) return { success: false };
-        const { data: { user } } = await supabase.auth.getUser();
-        const { data, error } = await supabase.from("noticias").insert([{
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        const { data, error } = await supabaseClient.from("noticias").insert([{
             titulo: noticiaData.titulo,
             conteudo: noticiaData.resumo,
             autor_id: user?.id,
@@ -237,30 +237,30 @@ const DBService = {
 
     async getNoticias() {
         if (!dbFuncional) return [];
-        const { data } = await supabase.from("noticias").select("*").order('created_at', { ascending: false });
+        const { data } = await supabaseClient.from("noticias").select("*").order('created_at', { ascending: false });
         return data ? data.map(n => ({ id: n.id, titulo: n.titulo, resumo: n.conteudo, imagem: n.imagem, tag: n.tag })) : [];
     },
 
     async deleteNoticia(id) {
         if (!dbFuncional) return;
-        await supabase.from("noticias").delete().eq('id', id);
+        await supabaseClient.from("noticias").delete().eq('id', id);
     },
 
     async addGaleria(imgUrl) {
         if (!dbFuncional) return { success: false };
-        const { data, error } = await supabase.from("galeria").insert([{ url: imgUrl }]).select();
+        const { data, error } = await supabaseClient.from("galeria").insert([{ url: imgUrl }]).select();
         return error ? { success: false, error } : { success: true, id: data[0].id };
     },
 
     async getGaleria() {
         if (!dbFuncional) return [];
-        const { data } = await supabase.from("galeria").select("*").order('created_at', { ascending: false });
+        const { data } = await supabaseClient.from("galeria").select("*").order('created_at', { ascending: false });
         return data || [];
     },
 
     async deleteGaleria(id) {
         if (!dbFuncional) return;
-        await supabase.from("galeria").delete().eq('id', id);
+        await supabaseClient.from("galeria").delete().eq('id', id);
     },
 
     _gerarCodigoAgendamento() {
@@ -273,7 +273,7 @@ const DBService = {
     async salvarAgendamento(agendamentoData) {
         if (!dbFuncional) return { success: false };
         const codigo = this._gerarCodigoAgendamento();
-        const { data, error } = await supabase.from("agendamentos").insert([{
+        const { data, error } = await supabaseClient.from("agendamentos").insert([{
             user_id: agendamentoData.clienteId,
             servico_id: agendamentoData.servicoId || null,
             servico_nome: agendamentoData.servico, // fallback
@@ -287,19 +287,19 @@ const DBService = {
 
     async getAgendamentosPorCliente(clienteId) {
         if (!dbFuncional) return [];
-        const { data } = await supabase.from("agendamentos").select("*").eq('user_id', clienteId).order('created_at', { ascending: false });
+        const { data } = await supabaseClient.from("agendamentos").select("*").eq('user_id', clienteId).order('created_at', { ascending: false });
         return data ? data.map(a => ({ id: a.id, codigo: a.codigo, servico: a.servico_nome, dataAgendamento: a.data_agendamento.split('T')[0], status: a.status, observacoes: a.observacoes })) : [];
     },
 
     async getClientes() {
         if (!dbFuncional) return [];
-        const { data } = await supabase.from("profiles").select("*").eq('role', 'client').order('created_at', { ascending: false });
+        const { data } = await supabaseClient.from("profiles").select("*").eq('role', 'client').order('created_at', { ascending: false });
         return data ? data.map(c => ({ id: c.id, razaoSocial: c.full_name, cnpj: c.cnpj, email: c.email, telefone: c.telefone })) : [];
     },
 
     async getAgendamentos() {
         if (!dbFuncional) return [];
-        const { data } = await supabase.from("agendamentos").select(`
+        const { data } = await supabaseClient.from("agendamentos").select(`
             *,
             profiles(full_name)
         `).order('created_at', { ascending: false });
@@ -319,15 +319,15 @@ const DBService = {
     async updateAgendamentoStatus(id, novoStatus) {
         if (!dbFuncional) return;
         if (novoStatus === 'Cancelado') {
-            await supabase.from("agendamentos").delete().eq('id', id);
+            await supabaseClient.from("agendamentos").delete().eq('id', id);
         } else {
-            await supabase.from("agendamentos").update({ status: novoStatus }).eq('id', id);
+            await supabaseClient.from("agendamentos").update({ status: novoStatus }).eq('id', id);
         }
     },
 
     async salvarFeedback(feedbackData) {
         if (!dbFuncional) return { success: false };
-        const { data, error } = await supabase.from("depoimentos").insert([{
+        const { data, error } = await supabaseClient.from("depoimentos").insert([{
             nome: feedbackData.clienteNome,
             mensagem: feedbackData.mensagem,
             aprovado: false
@@ -337,13 +337,13 @@ const DBService = {
 
     async getFeedbacksPublic() {
         if (!dbFuncional) return [];
-        const { data } = await supabase.from("depoimentos").select("*").eq('aprovado', true).order('created_at', { ascending: false });
+        const { data } = await supabaseClient.from("depoimentos").select("*").eq('aprovado', true).order('created_at', { ascending: false });
         return data ? data.map(f => ({ id: f.id, clienteNome: f.nome, mensagem: f.mensagem, data: f.created_at, status: 'Aprovado' })) : [];
     },
 
     async getFeedbacksAdmin() {
         if (!dbFuncional) return [];
-        const { data } = await supabase.from("depoimentos").select("*").order('created_at', { ascending: false });
+        const { data } = await supabaseClient.from("depoimentos").select("*").order('created_at', { ascending: false });
         return data ? data.map(f => ({ id: f.id, clienteNome: f.nome, mensagem: f.mensagem, data: f.created_at, status: f.aprovado ? 'Aprovado' : 'Pendente' })) : [];
     },
 

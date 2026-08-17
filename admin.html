@@ -457,7 +457,7 @@
     
     <script>
         // Verificação de Segurança por Token Supabase Auth
-        supabase.auth.onAuthStateChange(async (event, session) => {
+        supabaseClient.auth.onAuthStateChange(async (event, session) => {
             const user = session?.user;
             const isMestre = new URLSearchParams(window.location.search).get('mestre') === '1';
             
@@ -466,7 +466,7 @@
                  carregarDados();
             } else if (user && dbFuncional) {
                 // Checa se é realmente admin no Supabase
-                const { data: profile } = await supabase
+                const { data: profile } = await supabaseClient
                     .from('profiles')
                     .select('role')
                     .eq('id', user.id)
@@ -477,7 +477,7 @@
                     carregarDados();
                 } else {
                     await CustomUI.alert('Este usuário não tem permissões administrativas.', 'Acesso Negado');
-                    await supabase.auth.signOut();
+                    await supabaseClient.auth.signOut();
                     window.location.href = 'index.html';
                 }
             } else {

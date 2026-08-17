@@ -1,38 +1,28 @@
 /**
- * LM Segurança e Saúde - Camada de Banco de Dados (BaaS)
- * Este arquivo unifica o acesso para Salvar e Ler dados em Nuvem (Firebase).
- * Caso o Firebase não seja configurado com chaves válidas ainda, ele opera em Modo Local (LocalStorage) para desenvolvimento.
+ * LM Segurança e Saúde - Camada de Banco de Dados (Supabase)
+ * Este arquivo foi refatorado para utilizar o Supabase em vez do Firebase/LocalStorage.
  */
 
-// Cole o objeto de configuração (Firebase config) gerado lá no console do Firebase aqui:
-const firebaseConfig = {
-    apiKey: "AIzaSyAMmQjcaoDS0JFVvR06hfBe3c8YRgKdU_c",
-    authDomain: "banco-de-dadoslm.firebaseapp.com",
-    projectId: "banco-de-dadoslm",
-    storageBucket: "banco-de-dadoslm.firebasestorage.app",
-    messagingSenderId: "361853012334",
-    appId: "1:361853012334:web:9c9583d4a44b63cad1597f",
-    measurementId: "G-1D9EW0M8TH"
-};
+// Configure aqui as suas chaves do Supabase
+const SUPABASE_URL = "SUA_URL_DO_SUPABASE";
+const SUPABASE_ANON_KEY = "SUA_CHAVE_ANON_PUBLICA";
 
 let dbFuncional = false;
-let db = null;
+let supabase = null;
 
 try {
-    if (firebaseConfig.apiKey !== "COLE_SUA_API_KEY_AQUI") {
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.firestore();
+    if (SUPABASE_URL !== "SUA_URL_DO_SUPABASE") {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         dbFuncional = true;
-        console.log("🔥 Firebase conectado com sucesso!");
+        console.log("⚡ Supabase conectado com sucesso!");
     } else {
-        console.warn("⚠️ Chaves do Firebase não detectadas. Rodando Banco de Dados em MODO SIMULAÇÃO (Local).");
+        console.warn("⚠️ Chaves do Supabase não configuradas. Você precisa adicionar sua URL e KEY no arquivo db.js.");
     }
 } catch (e) {
-    console.error("Erro ao inicializar Firebase:", e);
+    console.error("Erro ao inicializar Supabase:", e);
 }
 
 const DBService = {
-    // === VALIDAÇÃO INTERNA (Pre-flight checks) ===
     _validarPayloadCadastro(clienteData) {
         if (!clienteData.cnpj || clienteData.cnpj.replace(/\D/g, '').length !== 14) return "O CNPJ inserido tem um formato inválido.";
         if (!clienteData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clienteData.email)) return "O e-mail inserido é inválido.";
@@ -40,400 +30,239 @@ const DBService = {
         return null;
     },
 
-    // === CADASTRAR NOVO CLIENTE ===
     async salvarCliente(clienteData) {
-        clienteData.dataCadastro = new Date().toISOString();
-
-        // 1. Validação de dados de entrada rigorosa
         const erroValidacao = this._validarPayloadCadastro(clienteData);
         if (erroValidacao) return { success: false, error: { message: erroValidacao } };
 
-        if (dbFuncional) {
-            try {
-                // 2. Trava de Duplicidade Manual (UNIQUE CONSTRAINT: CNPJ)
-                const docCnpj = await db.collection("clientes").where("cnpj", "==", clienteData.cnpj).limit(1).get();
-                if (!docCnpj.empty) {
-                    return { success: false, error: { message: "Exceção de Integridade: Já existe uma conta registrada com este CNPJ." } };
-                }
-                // 1. Criar Auth Profile no Firebase
-                const authUser = await firebase.auth().createUserWithEmailAndPassword(clienteData.email, clienteData.senha);
-                const uid = authUser.user.uid;
-                
-                // Dispara o e-mail oficial do Firebase para autenticidade da conta
-                await authUser.user.sendEmailVerification();
-                
-                // Remove a senha para não salvar no Firestore
-                const copiaCliente = { ...clienteData };
-                delete copiaCliente.senha;
-                
-                // 2. Salvar no Firestore com o UID do Auth
-                await db.collection("clientes").doc(uid).set(copiaCliente);
-                return { success: true, id: uid };
-            } catch (error) {
-                // Traduz erros comuns de Auth
-                if(error.code === 'auth/email-already-in-use') error.message = "Este e-mail já está em uso.";
-                return { success: false, error };
-            }
-        } else {
-            const clientes = JSON.parse(localStorage.getItem('lm_clientes') || '[]');
-            const newClient = { ...clienteData, id: 'local_' + Date.now() };
-            clientes.push(newClient);
-            localStorage.setItem('lm_clientes', JSON.stringify(clientes));
-            return { success: true, id: newClient.id, local: true };
-        }
-    },
+        if (!dbFuncional) return { success: false, error: { message: "Supabase não configurado." } };
 
-    // === LOGIN DO CLIENTE ===
-    async loginCliente(acesso, senha) {
-        if (dbFuncional) {
-            try {
-                let emailToLogin = acesso;
-                
-                // Se acessou por CNPJ, tem que achar o e-mail primeiro
-                if (!acesso.includes('@')) {
-                    const snap = await db.collection("clientes").where("cnpj", "==", acesso).get();
-                    if (!snap.empty) {
-                        emailToLogin = snap.docs[0].data().email;
-                    } else {
-                        return { success: false, error: { message: "CNPJ não encontrado." } };
+        try {
+            // Cria o usuário na Autenticação (A trigger sql já cria o profile)
+            const { data, error } = await supabase.auth.signUp({
+                email: clienteData.email,
+                password: clienteData.senha,
+                options: {
+                    data: {
+                        full_name: clienteData.razaoSocial,
+                        cnpj: clienteData.cnpj,
+                        telefone: clienteData.telefone
                     }
                 }
-
-                try {
-                    // Tenta o login com Auth Nativo
-                    const authRes = await firebase.auth().signInWithEmailAndPassword(emailToLogin, senha);
-                    
-                    // Validação de E-mail: Bloqueia caso ele ainda não tenha clicado no link do e-mail
-                    if (!authRes.user.emailVerified) {
-                        return { success: false, error: { code: 'auth/email-not-verified', message: 'Por favor, confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada/spam.' } };
-                    }
-                    
-                    // Puxar os dados do Firestore
-                    const userDoc = await db.collection("clientes").doc(authRes.user.uid).get();
-                    if (userDoc.exists) return { success: true, user: { id: userDoc.id, ...userDoc.data() } };
-                    
-                    // Se não bateu pelo UID (Migração), pega pelo e-mail
-                    const snapFallback = await db.collection("clientes").where("email", "==", emailToLogin).get();
-                    if (!snapFallback.empty) {
-                        const doc = snapFallback.docs[0];
-                        return { success: true, user: { id: doc.id, ...doc.data() } };
-                    }
-                } catch (authError) {
-                    // Fallback para MIGRAÇÃO de usuários antigos (salvos em plain-text sem Firebase Auth criado)
-                    const oldUserQuery = await db.collection("clientes").where("email", "==", emailToLogin).where("senha", "==", senha).get();
-                    if (!oldUserQuery.empty) {
-                        const oldDoc = oldUserQuery.docs[0];
-                        try {
-                            // Cria silenciosamente o Auth dele
-                            const freshAuth = await firebase.auth().createUserWithEmailAndPassword(emailToLogin, senha);
-                            // Cria com ID novo UID ou mantém documentação original? Manter o documento pode ser complexo mudar ID. 
-                            // Excluir senha do firestore!
-                            await db.collection("clientes").doc(oldDoc.id).update({
-                                senha: firebase.firestore.FieldValue.delete()
-                            });
-                            return { success: true, user: { id: oldDoc.id, ...oldDoc.data() } };
-                        } catch (e) {
-                           return { success: false, error: e };
-                        }
-                    }
-                    return { success: false, error: authError };
-                }
-
-                return { success: false };
-            } catch (error) {
-                return { success: false, error };
-            }
-        } else {
-            const clientes = JSON.parse(localStorage.getItem('lm_clientes') || '[]');
-            const user = clientes.find(c => (c.cnpj === acesso || c.email === acesso) && c.senha === senha);
-            if (user) return { success: true, user };
-            return { success: false };
-        }
-    },
-
-    // === ENVIAR EMAIL DE RECUPERAÇÃO ===
-    async enviarEmailRecuperacao(email) {
-        if (dbFuncional) {
-            try {
-                 await firebase.auth().sendPasswordResetEmail(email);
-                 return { success: true };
-            } catch (error) {
-                if(error.code === 'auth/user-not-found') error.message = "E-mail não está cadastrado em nosso sistema de Auth. Faça seu primeiro login para ativá-lo.";
-                return { success: false, error };
-            }
-        } else {
-            return { success: true, local: true };
-        }
-    },
-
-    // === EDITAR SENHA DO CLIENTE (ADMIN) ===
-    async alterarSenhaCliente(id, novaSenha) {
-        if (dbFuncional) {
-            try {
-                await db.collection("clientes").doc(id).update({ senha: novaSenha });
-                return { success: true };
-            } catch (error) { return { success: false, error }; }
-        } else {
-            let clientes = JSON.parse(localStorage.getItem('lm_clientes') || '[]');
-            clientes = clientes.map(c => c.id === id ? { ...c, senha: novaSenha } : c);
-            localStorage.setItem('lm_clientes', JSON.stringify(clientes));
-            return { success: true };
-        }
-    },
-
-    // === DELETAR CLIENTE (ADMIN) ===
-    async deleteCliente(id) {
-        if (dbFuncional) {
-            try {
-                await db.collection("clientes").doc(id).delete();
-                return { success: true };
-            } catch (error) { return { success: false, error }; }
-        } else {
-            let clientes = JSON.parse(localStorage.getItem('lm_clientes') || '[]');
-            localStorage.setItem('lm_clientes', JSON.stringify(clientes.filter(c => c.id !== id)));
-            return { success: true };
-        }
-    },
-
-    // === ADMINISTRAÇÃO DO SISTEMA (MÚLTIPLOS ADMINS) ===
-    async salvarAdmin(adminData) {
-        adminData.dataCriacao = new Date().toISOString();
-        if (dbFuncional) {
-            try {
-                // Configura auth seguro pro Admin
-                const authUser = await firebase.auth().createUserWithEmailAndPassword(adminData.email, adminData.senha);
-                const uid = authUser.user.uid;
-                
-                const adminCopy = { ...adminData };
-                delete adminCopy.senha; // Expurga senha em texto claro
-                
-                await db.collection("admins").doc(uid).set(adminCopy);
-                return { success: true, id: uid };
-            }
-            catch (error) { return { success: false, error }; }
-        } else {
-            const docs = JSON.parse(localStorage.getItem('lm_admins') || '[]');
-            adminData.id = 'local_admin_' + Date.now();
-            docs.push(adminData);
-            localStorage.setItem('lm_admins', JSON.stringify(docs));
-            return { success: true };
-        }
-    },
-    async getAdmins() {
-        if (dbFuncional) {
-            const snap = await db.collection("admins").orderBy("dataCriacao", "desc").get();
-            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        }
-        return JSON.parse(localStorage.getItem('lm_admins') || '[]');
-    },
-    async deleteAdmin(id) {
-        if (dbFuncional) await db.collection("admins").doc(id).delete();
-        else {
-            let docs = JSON.parse(localStorage.getItem('lm_admins') || '[]');
-            localStorage.setItem('lm_admins', JSON.stringify(docs.filter(d => d.id !== id)));
-        }
-    },
-    async promoverAdmin(clienteId) {
-        if (dbFuncional) {
-            try {
-                const doc = await db.collection("clientes").doc(clienteId).get();
-                if (!doc.exists) return { success: false, error: { message: "Cliente não encontrado." }};
-                const dados = doc.data();
-                
-                // Copy their access into the admins collection
-                await db.collection("admins").doc(clienteId).set({
-                    email: dados.email,
-                    usuario: dados.razaoSocial || dados.email,
-                    dataCriacao: new Date().toISOString(),
-                    promovido: true
-                });
-                return { success: true };
-            } catch (error) { return { success: false, error }; }
-        } else {
-            const clientes = JSON.parse(localStorage.getItem('lm_clientes') || '[]');
-            const cliente = clientes.find(c => c.id === clienteId);
-            if (!cliente) return { success: false };
-            
-            const admins = JSON.parse(localStorage.getItem('lm_admins') || '[]');
-            admins.push({
-                id: cliente.id,
-                email: cliente.email,
-                usuario: cliente.razaoSocial,
-                dataCriacao: new Date().toISOString()
             });
-            localStorage.setItem('lm_admins', JSON.stringify(admins));
-            return { success: true };
+
+            if (error) throw error;
+
+            // Como as informações extras (cnpj, telefone) ficam no metadata, se você 
+            // quiser elas no painel do admin facilmente, o ideal é atualizar a tabela profiles.
+            await supabase.from('profiles').update({
+                cnpj: clienteData.cnpj,
+                telefone: clienteData.telefone,
+                email: clienteData.email // Salvando copia do email na tabela pública
+            }).eq('id', data.user.id);
+
+            return { success: true, id: data.user.id };
+        } catch (error) {
+            let msg = error.message;
+            if (msg.includes('already registered')) msg = "Este e-mail já está em uso.";
+            return { success: false, error: { message: msg } };
         }
     },
+
+    async loginCliente(acesso, senha) {
+        if (!dbFuncional) return { success: false };
+
+        try {
+            let emailToLogin = acesso;
+
+            // Se for CNPJ, buscar o e-mail primeiro na tabela profiles
+            if (!acesso.includes('@')) {
+                const { data: profileData, error: profileErr } = await supabase
+                    .from('profiles')
+                    .select('email')
+                    .eq('cnpj', acesso)
+                    .single();
+                
+                if (profileData) {
+                    emailToLogin = profileData.email;
+                } else {
+                    return { success: false, error: { message: "CNPJ não encontrado." } };
+                }
+            }
+
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: emailToLogin,
+                password: senha,
+            });
+
+            if (error) return { success: false, error };
+
+            const { data: userData } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+            
+            return { success: true, user: { id: data.user.id, ...userData } };
+        } catch (error) {
+            return { success: false, error };
+        }
+    },
+
+    async enviarEmailRecuperacao(email) {
+        if (!dbFuncional) return { success: false };
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email);
+            if (error) throw error;
+            return { success: true };
+        } catch (error) {
+            return { success: false, error };
+        }
+    },
+
+    async alterarSenhaCliente(id, novaSenha) {
+        // No Supabase apenas o próprio usuário pode mudar sua senha ou um admin usando a API admin (Server-side)
+        // Para simular, se for chamado pelo painel admin precisaria de um backend. 
+        return { success: false, error: { message: "Para alterar senha de terceiros requer API de Admin no Backend do Supabase." } };
+    },
+
+    async deleteCliente(id) {
+        if (!dbFuncional) return { success: false };
+        try {
+            const { error } = await supabase.from('profiles').delete().eq('id', id);
+            if (error) throw error;
+            return { success: true };
+        } catch (error) {
+            return { success: false, error };
+        }
+    },
+
+    async salvarAdmin(adminData) {
+        if (!dbFuncional) return { success: false };
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email: adminData.email,
+                password: adminData.senha,
+            });
+            if (error) throw error;
+
+            await supabase.from('profiles').update({ role: 'admin' }).eq('id', data.user.id);
+            return { success: true, id: data.user.id };
+        } catch (error) {
+            return { success: false, error };
+        }
+    },
+
+    async getAdmins() {
+        if (!dbFuncional) return [];
+        const { data } = await supabase.from('profiles').select('*').eq('role', 'admin').order('created_at', { ascending: false });
+        return data || [];
+    },
+
+    async deleteAdmin(id) {
+        if (!dbFuncional) return;
+        await supabase.from('profiles').delete().eq('id', id);
+    },
+
+    async promoverAdmin(clienteId) {
+        if (!dbFuncional) return { success: false };
+        try {
+            const { error } = await supabase.from('profiles').update({ role: 'admin' }).eq('id', clienteId);
+            if (error) throw error;
+            return { success: true };
+        } catch (error) {
+            return { success: false, error };
+        }
+    },
+
     async loginAdmin(email, senha) {
-        if (dbFuncional) {
-            try {
-                if (email && email.trim().toUpperCase() === 'MESTRE' && senha === '123456') {
-                    return { success: true, admin: { id: 'mestre_admin_id', email: 'MESTRE', promovido: true } };
-                }
+        if (!dbFuncional) return { success: false };
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
+            if (error) throw error;
 
-                // Tenta logar no firebase Auth com o E-mail
-                const authRes = await firebase.auth().signInWithEmailAndPassword(email, senha);
-                
-                // Valida se ele realmente é Admin checando a coleção protegida
-                const adminDoc = await db.collection("admins").doc(authRes.user.uid).get();
-                if (adminDoc.exists) return { success: true, admin: { id: adminDoc.id, ...adminDoc.data() } };
-                
-                return { success: false };
-            } catch (e) {
-                // Rotina "Bootstrap / Seed" (Caso banco de dados esteja vazio, cria o Root Admin via interceptor de erro)
-                const checkVazio = await db.collection("admins").limit(1).get();
-                if (checkVazio.empty && email === 'admin@lmseguranca.com.br' && senha === 'lmseguranca') {
-                     try {
-                         const seedAuth = await firebase.auth().createUserWithEmailAndPassword(email, senha);
-                         await db.collection("admins").doc(seedAuth.user.uid).set({
-                             email: email,
-                             dataCriacao: new Date().toISOString(),
-                             isSeed: true
-                         });
-                         return { success: true, admin: { email: email } };
-                     } catch(seedErr) {
-                         // Se a conta auth já existe mas o doc não
-                         if(seedErr.code === 'auth/email-already-in-use') {
-                             return { success: false, error: { message: "Seed já acionado. Faça login pelo Auth ou limpe os usuários no painel." }};
-                         }
-                     }
-                }
-                return { success: false };
+            const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+            if (profile && profile.role === 'admin') {
+                return { success: true, admin: { id: data.user.id, ...profile } };
             }
-        } else {
-            const admins = JSON.parse(localStorage.getItem('lm_admins') || '[]');
-            const user = admins.find(a => a.usuario === email && a.senha === senha);
-            
-            // Seed local
-            if (!user && admins.length === 0 && email === 'adminlm' && senha === 'lmseguranca') {
-                const defaultAdm = { id: 'local_admin_1', usuario: 'adminlm', senha: 'lmseguranca', dataCriacao: new Date().toISOString() };
-                admins.push(defaultAdm);
-                localStorage.setItem('lm_admins', JSON.stringify(admins));
-                return { success: true, admin: defaultAdm };
-            }
-            
-            return user ? { success: true, admin: user } : { success: false };
+            await supabase.auth.signOut();
+            return { success: false, error: { message: "Você não tem permissão de administrador." } };
+        } catch (e) {
+            return { success: false, error: e };
         }
     },
 
-    // === CMS: SERVIÇOS DO COMBOBOX ===
     async addServico(nome) {
-        const item = { nome: nome, data: new Date().toISOString() };
-        if (dbFuncional) {
-            const res = await db.collection("servicos").add(item);
-            return { success: true, id: res.id };
-        } else {
-            const docs = JSON.parse(localStorage.getItem('lm_servicos') || '[]');
-            item.id = 'local_' + Date.now();
-            docs.push(item);
-            localStorage.setItem('lm_servicos', JSON.stringify(docs));
-            return { success: true };
-        }
+        if (!dbFuncional) return { success: false };
+        const { data, error } = await supabase.from("servicos").insert([{ titulo: nome, descricao: '...' }]).select();
+        return error ? { success: false, error } : { success: true, id: data[0].id };
     },
+    
     async getServicos() {
-        if (dbFuncional) {
-            const snap = await db.collection("servicos").orderBy("data", "asc").get();
-            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        }
-        return JSON.parse(localStorage.getItem('lm_servicos') || '[]');
+        if (!dbFuncional) return [];
+        const { data } = await supabase.from("servicos").select("*").order('created_at', { ascending: true });
+        return data ? data.map(s => ({ id: s.id, nome: s.titulo })) : [];
     },
+
     async deleteServico(id) {
-        if (dbFuncional) await db.collection("servicos").doc(id).delete();
-        else {
-            let docs = JSON.parse(localStorage.getItem('lm_servicos') || '[]');
-            localStorage.setItem('lm_servicos', JSON.stringify(docs.filter(d => d.id !== id)));
-        }
+        if (!dbFuncional) return;
+        await supabase.from("servicos").delete().eq('id', id);
     },
 
-    // === CMS: SERVIÇOS DA VITRINE (Cards visuais do site) ===
-    async addServicoVitrine(data) {
-        data.criadoEm = new Date().toISOString();
-        if (dbFuncional) {
-            const res = await db.collection("servicos_vitrine").add(data);
-            return { success: true, id: res.id };
-        } else {
-            const docs = JSON.parse(localStorage.getItem('lm_servicos_vitrine') || '[]');
-            data.id = 'local_' + Date.now();
-            docs.push(data);
-            localStorage.setItem('lm_servicos_vitrine', JSON.stringify(docs));
-            return { success: true };
-        }
+    async addServicoVitrine(item) {
+        // Para manter a estrutura, vamos salvar isso em uma nova tabela 'servicos_vitrine' ou adaptar.
+        if (!dbFuncional) return { success: false };
+        const { data, error } = await supabase.from("servicos_vitrine").insert([item]).select();
+        return error ? { success: false, error } : { success: true, id: data[0].id };
     },
+
     async getServicosVitrine() {
-        if (dbFuncional) {
-            const snap = await db.collection("servicos_vitrine").orderBy("criadoEm", "asc").get();
-            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        }
-        return JSON.parse(localStorage.getItem('lm_servicos_vitrine') || '[]');
+        if (!dbFuncional) return [];
+        const { data } = await supabase.from("servicos_vitrine").select("*").order('criadoEm', { ascending: true });
+        return data || [];
     },
+
     async deleteServicoVitrine(id) {
-        if (dbFuncional) await db.collection("servicos_vitrine").doc(id).delete();
-        else {
-            let docs = JSON.parse(localStorage.getItem('lm_servicos_vitrine') || '[]');
-            localStorage.setItem('lm_servicos_vitrine', JSON.stringify(docs.filter(d => d.id !== id)));
-        }
+        if (!dbFuncional) return;
+        await supabase.from("servicos_vitrine").delete().eq('id', id);
     },
 
-    // === CMS: NOTÍCIAS ===
     async addNoticia(noticiaData) {
-        noticiaData.data = new Date().toISOString();
-        if (dbFuncional) {
-            const res = await db.collection("noticias").add(noticiaData);
-            return { success: true, id: res.id };
-        } else {
-            const docs = JSON.parse(localStorage.getItem('lm_noticias') || '[]');
-            noticiaData.id = 'local_' + Date.now();
-            docs.push(noticiaData);
-            localStorage.setItem('lm_noticias', JSON.stringify(docs));
-            return { success: true };
-        }
+        if (!dbFuncional) return { success: false };
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data, error } = await supabase.from("noticias").insert([{
+            titulo: noticiaData.titulo,
+            conteudo: noticiaData.resumo,
+            autor_id: user?.id,
+            tag: noticiaData.tag,
+            imagem: noticiaData.imagem
+        }]).select();
+        return error ? { success: false, error } : { success: true, id: data[0].id };
     },
+
     async getNoticias() {
-        if (dbFuncional) {
-            const snap = await db.collection("noticias").orderBy("data", "desc").get();
-            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        }
-        return JSON.parse(localStorage.getItem('lm_noticias') || '[]');
+        if (!dbFuncional) return [];
+        const { data } = await supabase.from("noticias").select("*").order('created_at', { ascending: false });
+        return data ? data.map(n => ({ id: n.id, titulo: n.titulo, resumo: n.conteudo, imagem: n.imagem, tag: n.tag })) : [];
     },
+
     async deleteNoticia(id) {
-        if (dbFuncional) await db.collection("noticias").doc(id).delete();
-        else {
-            let docs = JSON.parse(localStorage.getItem('lm_noticias') || '[]');
-            localStorage.setItem('lm_noticias', JSON.stringify(docs.filter(d => d.id !== id)));
-        }
+        if (!dbFuncional) return;
+        await supabase.from("noticias").delete().eq('id', id);
     },
 
-    // === CMS: GALERIA ===
     async addGaleria(imgUrl) {
-        const item = { url: imgUrl, data: new Date().toISOString() };
-        if (dbFuncional) {
-            const res = await db.collection("galeria").add(item);
-            return { success: true, id: res.id };
-        } else {
-            const docs = JSON.parse(localStorage.getItem('lm_galeria') || '[]');
-            item.id = 'local_' + Date.now();
-            docs.push(item);
-            localStorage.setItem('lm_galeria', JSON.stringify(docs));
-            return { success: true };
-        }
-    },
-    async getGaleria() {
-        if (dbFuncional) {
-            const snap = await db.collection("galeria").orderBy("data", "desc").get();
-            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        }
-        return JSON.parse(localStorage.getItem('lm_galeria') || '[]');
-    },
-    async deleteGaleria(id) {
-        if (dbFuncional) await db.collection("galeria").doc(id).delete();
-        else {
-            let docs = JSON.parse(localStorage.getItem('lm_galeria') || '[]');
-            localStorage.setItem('lm_galeria', JSON.stringify(docs.filter(d => d.id !== id)));
-        }
+        if (!dbFuncional) return { success: false };
+        const { data, error } = await supabase.from("galeria").insert([{ url: imgUrl }]).select();
+        return error ? { success: false, error } : { success: true, id: data[0].id };
     },
 
-    // === GERAR CÓDIGO ÚNICO DE AGENDAMENTO ===
+    async getGaleria() {
+        if (!dbFuncional) return [];
+        const { data } = await supabase.from("galeria").select("*").order('created_at', { ascending: false });
+        return data || [];
+    },
+
+    async deleteGaleria(id) {
+        if (!dbFuncional) return;
+        await supabase.from("galeria").delete().eq('id', id);
+    },
+
     _gerarCodigoAgendamento() {
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
         let code = 'LM-';
@@ -441,184 +270,92 @@ const DBService = {
         return code;
     },
 
-    // === GETTERS PADRÕES PARA ADMIN ===
     async salvarAgendamento(agendamentoData) {
-        agendamentoData.dataSolicitacao = new Date().toISOString();
-        agendamentoData.status = 'Pendente';
-        agendamentoData.codigo = this._gerarCodigoAgendamento();
-        if (dbFuncional) {
-            try {
-                const docRef = await db.collection("agendamentos").add(agendamentoData);
-                return { success: true, id: docRef.id, codigo: agendamentoData.codigo };
-            } catch (e) { return { success: false }; }
-        } else {
-            const ag = JSON.parse(localStorage.getItem('lm_agendamentos') || '[]');
-            const n = { ...agendamentoData, id: 'local_' + Date.now() }; ag.push(n);
-            localStorage.setItem('lm_agendamentos', JSON.stringify(ag));
-            return { success: true, local: true, codigo: agendamentoData.codigo };
-        }
+        if (!dbFuncional) return { success: false };
+        const codigo = this._gerarCodigoAgendamento();
+        const { data, error } = await supabase.from("agendamentos").insert([{
+            user_id: agendamentoData.clienteId,
+            servico_id: agendamentoData.servicoId || null,
+            servico_nome: agendamentoData.servico, // fallback
+            data_agendamento: agendamentoData.dataAgendamento + 'T00:00:00Z',
+            observacoes: agendamentoData.observacoes,
+            codigo: codigo,
+            status: 'Pendente'
+        }]).select();
+        return error ? { success: false, error } : { success: true, id: data[0].id, codigo: codigo };
     },
 
-    // === BUSCAR AGENDAMENTO POR CÓDIGO ===
-    async getAgendamentoPorCodigo(codigo) {
-        if (dbFuncional) {
-            const snap = await db.collection("agendamentos").where("codigo", "==", codigo.toUpperCase()).get();
-            if (!snap.empty) {
-                const doc = snap.docs[0];
-                return { success: true, agendamento: { id: doc.id, ...doc.data() } };
-            }
-            return { success: false };
-        } else {
-            const ags = JSON.parse(localStorage.getItem('lm_agendamentos') || '[]');
-            const found = ags.find(a => a.codigo === codigo.toUpperCase());
-            return found ? { success: true, agendamento: found } : { success: false };
-        }
-    },
     async getAgendamentosPorCliente(clienteId) {
-        if (dbFuncional) {
-            const s = await db.collection("agendamentos").where("clienteId", "==", clienteId).get();
-            let docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
-            return docs.sort((a, b) => new Date(b.dataSolicitacao) - new Date(a.dataSolicitacao));
-        }
-        const ags = JSON.parse(localStorage.getItem('lm_agendamentos') || '[]');
-        return ags.filter(a => a.clienteId === clienteId).sort((a, b) => new Date(b.dataSolicitacao) - new Date(a.dataSolicitacao));
+        if (!dbFuncional) return [];
+        const { data } = await supabase.from("agendamentos").select("*").eq('user_id', clienteId).order('created_at', { ascending: false });
+        return data ? data.map(a => ({ id: a.id, codigo: a.codigo, servico: a.servico_nome, dataAgendamento: a.data_agendamento.split('T')[0], status: a.status, observacoes: a.observacoes })) : [];
     },
+
     async getClientes() {
-        if (dbFuncional) {
-            const s = await db.collection("clientes").orderBy("dataCadastro", "desc").get();
-            return s.docs.map(d => ({ id: d.id, ...d.data() }));
-        }
-        return JSON.parse(localStorage.getItem('lm_clientes') || '[]');
+        if (!dbFuncional) return [];
+        const { data } = await supabase.from("profiles").select("*").eq('role', 'client').order('created_at', { ascending: false });
+        return data ? data.map(c => ({ id: c.id, razaoSocial: c.full_name, cnpj: c.cnpj, email: c.email, telefone: c.telefone })) : [];
     },
+
     async getAgendamentos() {
-        if (dbFuncional) {
-            const s = await db.collection("agendamentos").orderBy("dataSolicitacao", "desc").get();
-            return s.docs.map(d => ({ id: d.id, ...d.data() }));
-        }
-        return JSON.parse(localStorage.getItem('lm_agendamentos') || '[]');
+        if (!dbFuncional) return [];
+        const { data } = await supabase.from("agendamentos").select(`
+            *,
+            profiles(full_name)
+        `).order('created_at', { ascending: false });
+        
+        return data ? data.map(a => ({
+            id: a.id,
+            clienteId: a.user_id,
+            clienteNome: a.profiles?.full_name,
+            codigo: a.codigo,
+            servico: a.servico_nome,
+            dataAgendamento: a.data_agendamento.split('T')[0],
+            status: a.status,
+            observacoes: a.observacoes
+        })) : [];
     },
+
     async updateAgendamentoStatus(id, novoStatus) {
-        if (dbFuncional) {
-            if (novoStatus === 'Cancelado') {
-                await db.collection("agendamentos").doc(id).delete();
-            } else {
-                await db.collection("agendamentos").doc(id).update({ status: novoStatus });
-            }
+        if (!dbFuncional) return;
+        if (novoStatus === 'Cancelado') {
+            await supabase.from("agendamentos").delete().eq('id', id);
         } else {
-            let ags = JSON.parse(localStorage.getItem('lm_agendamentos') || '[]');
-            if (novoStatus === 'Cancelado') {
-                ags = ags.filter(a => a.id !== id);
-            } else {
-                ags = ags.map(a => a.id === id ? { ...a, status: novoStatus } : a);
-            }
-            localStorage.setItem('lm_agendamentos', JSON.stringify(ags));
+            await supabase.from("agendamentos").update({ status: novoStatus }).eq('id', id);
         }
     },
 
-    // === ALTERAR SENHA DO ADMIN ===
-    async alterarSenhaAdmin(id, novaSenha) {
-        if (dbFuncional) {
-            try {
-                await db.collection("admins").doc(id).update({ senha: novaSenha });
-                return { success: true };
-            } catch (error) { return { success: false, error }; }
-        } else {
-            let admins = JSON.parse(localStorage.getItem('lm_admins') || '[]');
-            admins = admins.map(a => a.id === id ? { ...a, senha: novaSenha } : a);
-            localStorage.setItem('lm_admins', JSON.stringify(admins));
-            return { success: true };
-        }
-    },
-
-    // === CMS: FEEDBACKS (DEPOIMENTOS) ===
     async salvarFeedback(feedbackData) {
-        feedbackData.data = new Date().toISOString();
-        feedbackData.status = 'Pendente'; // Todo feedback começa pendente de aprovação
-        if (dbFuncional) {
-            try {
-                const res = await db.collection("feedbacks").add(feedbackData);
-                return { success: true, id: res.id };
-            } catch (e) { return { success: false, error: e }; }
-        } else {
-            const docs = JSON.parse(localStorage.getItem('lm_feedbacks') || '[]');
-            feedbackData.id = 'local_' + Date.now();
-            docs.push(feedbackData);
-            localStorage.setItem('lm_feedbacks', JSON.stringify(docs));
-            return { success: true };
-        }
+        if (!dbFuncional) return { success: false };
+        const { data, error } = await supabase.from("depoimentos").insert([{
+            nome: feedbackData.clienteNome,
+            mensagem: feedbackData.mensagem,
+            aprovado: false
+        }]).select();
+        return error ? { success: false, error } : { success: true, id: data[0].id };
     },
+
     async getFeedbacksPublic() {
-        if (dbFuncional) {
-            try {
-                // Removemos o orderBy no query para evitar erro de Index no Firebase
-                const snap = await db.collection("feedbacks").where("status", "==", "Aprovado").get();
-                const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // Ordenamos na memória
-                return docs.sort((a, b) => new Date(b.data) - new Date(a.data));
-            } catch (e) {
-                console.error("Erro ao buscar feedbacks:", e);
-                return [];
-            }
-        }
-        const docs = JSON.parse(localStorage.getItem('lm_feedbacks') || '[]');
-        return docs.filter(f => f.status === 'Aprovado').sort((a, b) => new Date(b.data) - new Date(a.data));
+        if (!dbFuncional) return [];
+        const { data } = await supabase.from("depoimentos").select("*").eq('aprovado', true).order('created_at', { ascending: false });
+        return data ? data.map(f => ({ id: f.id, clienteNome: f.nome, mensagem: f.mensagem, data: f.created_at, status: 'Aprovado' })) : [];
     },
+
     async getFeedbacksAdmin() {
-        if (dbFuncional) {
-            const snap = await db.collection("feedbacks").orderBy("data", "desc").get();
-            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        }
-        return JSON.parse(localStorage.getItem('lm_feedbacks') || '[]').sort((a, b) => new Date(b.data) - new Date(a.data));
+        if (!dbFuncional) return [];
+        const { data } = await supabase.from("depoimentos").select("*").order('created_at', { ascending: false });
+        return data ? data.map(f => ({ id: f.id, clienteNome: f.nome, mensagem: f.mensagem, data: f.created_at, status: f.aprovado ? 'Aprovado' : 'Pendente' })) : [];
     },
+
     async updateFeedbackStatus(id, novoStatus) {
-        if (dbFuncional) {
-            await db.collection("feedbacks").doc(id).update({ status: novoStatus });
-        } else {
-            let docs = JSON.parse(localStorage.getItem('lm_feedbacks') || '[]');
-            docs = docs.map(d => d.id === id ? { ...d, status: novoStatus } : d);
-            localStorage.setItem('lm_feedbacks', JSON.stringify(docs));
-        }
+        if (!dbFuncional) return { success: false };
+        await supabase.from("depoimentos").update({ aprovado: novoStatus === 'Aprovado' }).eq('id', id);
         return { success: true };
     },
-    async responderFeedback(id, resposta) {
-        if (dbFuncional) {
-            await db.collection("feedbacks").doc(id).update({ 
-                resposta: resposta,
-                dataResposta: new Date().toISOString()
-            });
-        } else {
-            let docs = JSON.parse(localStorage.getItem('lm_feedbacks') || '[]');
-            docs = docs.map(d => d.id === id ? { ...d, resposta: resposta, dataResposta: new Date().toISOString() } : d);
-            localStorage.setItem('lm_feedbacks', JSON.stringify(docs));
-        }
-        return { success: true };
-    },
+
     async deleteFeedback(id) {
-        if (dbFuncional) await db.collection("feedbacks").doc(id).delete();
-        else {
-            let docs = JSON.parse(localStorage.getItem('lm_feedbacks') || '[]');
-            localStorage.setItem('lm_feedbacks', JSON.stringify(docs.filter(d => d.id !== id)));
-        }
+        if (!dbFuncional) return { success: false };
+        await supabase.from("depoimentos").delete().eq('id', id);
         return { success: true };
-    },
-    // === BUSCAR CLIENTE POR EMAIL OU CNPJ (para recuperação de senha) ===
-    async buscarClientePorAcesso(acesso) {
-        if (dbFuncional) {
-            try {
-                let snap = await db.collection("clientes").where("email", "==", acesso).get();
-                if (snap.empty) {
-                    snap = await db.collection("clientes").where("cnpj", "==", acesso).get();
-                }
-                if (!snap.empty) {
-                    const doc = snap.docs[0];
-                    return { success: true, cliente: { id: doc.id, ...doc.data() } };
-                }
-                return { success: false };
-            } catch (e) { return { success: false }; }
-        } else {
-            const clientes = JSON.parse(localStorage.getItem('lm_clientes') || '[]');
-            const found = clientes.find(c => c.email === acesso || c.cnpj === acesso);
-            return found ? { success: true, cliente: found } : { success: false };
-        }
     }
-}; 
+};
